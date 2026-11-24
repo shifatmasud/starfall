@@ -28,7 +28,6 @@ const vertexShader = /* glsl */ `
 in vec3 aStar;    // xyz direction * radius
 in vec4 aData;    // magnitude, temperature, phase, size
 uniform float uTime;
-uniform float uProj;
 uniform float uAmount;
 out float vAlpha;
 out vec3 vTint;
@@ -39,7 +38,6 @@ void main() {
   vAlpha = uAmount * (0.35 + 0.65 * aData.x) * twinkle;
   vTint = mix(vec3(1.0, 0.86, 0.68), vec3(0.76, 0.86, 1.0), aData.y);
   gl_PointSize = clamp((0.6 + aData.w * 2.6) * aData.x * 9.0, 0.8, 6.5);
-  void uProj;
 }
 `
 
@@ -97,7 +95,7 @@ export function Starfield() {
         depthWrite: false,
         depthTest: false,
         blending: THREE.AdditiveBlending,
-        uniforms: { uTime: { value: 0 }, uProj: { value: 900 }, uAmount: { value: 0 } },
+        uniforms: { uTime: { value: 0 }, uAmount: { value: 0 } },
       }),
     [],
   )
@@ -106,8 +104,6 @@ export function Starfield() {
     sampleAtmosphere(journey.u)
     material.uniforms.uTime.value = journey.time
     material.uniforms.uAmount.value = Math.min(1, atmosphere.stars * 1.2)
-    const fov = THREE.MathUtils.degToRad((camera as THREE.PerspectiveCamera).fov ?? 40)
-    material.uniforms.uProj.value = state.gl.domElement.height / (2 * Math.tan(fov / 2))
     // the shell travels with the lens: stars have no parallax
     const g = groupRef.current
     if (g) {
