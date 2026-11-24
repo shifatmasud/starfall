@@ -415,7 +415,7 @@ function tuftBase(): THREE.InstancedBufferGeometry {
 function buildTufts(tier: Tier, material: THREE.Material): THREE.InstancedMesh {
   const rnd = mulberry32(0x8c31d2)
   const high = tier !== 'low'
-  const spots = scatter(rnd, high ? 13000 : 4200, MEADOW_REGIONS, dryLand, { sightline: 1.0 })
+  const spots = scatter(rnd, high ? 17000 : 5200, MEADOW_REGIONS, dryLand, { sightline: 1.0 })
   const geo = tuftBase()
   const mesh = new THREE.InstancedMesh(geo, material, spots.length)
   const matrix = new THREE.Matrix4()
@@ -427,7 +427,7 @@ function buildTufts(tier: Tier, material: THREE.Material): THREE.InstancedMesh {
     pos.set(spot.x, spot.y - 0.04, spot.z)
     quat.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI * 2)
     const h = range(rnd, 0.7, 1.35)
-    scl.set(range(rnd, 0.8, 1.35), h, 1)
+    scl.set(range(rnd, 1.0, 1.7), h, 1)
     matrix.compose(pos, quat, scl)
     mesh.setMatrixAt(i, matrix)
     varr[i * 2] = rnd() * Math.PI * 2
@@ -500,7 +500,7 @@ function createTuftMaterial(uniforms: WorldUniforms, texture: THREE.Texture): TH
         float cut = mix(0.42, 0.78, far);
         if (texel.a * edge < cut) discard;
 
-        vec3 col = texel.rgb * vBase * 1.34;
+        vec3 col = texel.rgb * vBase * 1.06;
         vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
         if (dot(n, cameraPosition - vWorld) < 0.0) n = -n;
         // a tuft is a mass of blades, not a card: light it mostly as the ground it grows from

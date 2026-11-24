@@ -165,7 +165,7 @@ function buildPines(ctx: TreeCtx, spots: Spot[]): { wood: Geo; needles: Geo } {
       const centre = points[idx]
       const curve = Math.min(1, Math.max(0.06, (t - crownBase + 0.1) / (1 - crownBase)))
       const spread = crownR * Math.sin(Math.PI * Math.pow(curve, 0.72))
-      const twigs = 22 + Math.floor(rnd() * 8)
+      const twigs = 30 + Math.floor(rnd() * 10)
       for (let i = 0; i < twigs; i++) {
         const a = (i / twigs) * Math.PI * 2 + s * 1.1 + rnd() * 0.35
         const outward = S(Math.cos(a), 0, Math.sin(a))
@@ -641,7 +641,7 @@ export function ForestTrees({ uniforms, tier }: { uniforms: WorldUniforms; tier:
         uniforms,
         translucency: 0.55,
         swayAmount: 0.24,
-        tint: color('#B4C79A'),
+        tint: color('#C2D4A6'),
         depthShade: 0.14,
       }),
       birchLeaves: createFoliageMaterial({
@@ -655,7 +655,7 @@ export function ForestTrees({ uniforms, tier }: { uniforms: WorldUniforms; tier:
         uniforms,
         translucency: 0.3,
         swayAmount: 0.22,
-        tint: color('#8FA37B'),
+        tint: color('#A8BC92'),
         depthShade: 0.2,
       }),
       hazelLeaves: createFoliageMaterial({
