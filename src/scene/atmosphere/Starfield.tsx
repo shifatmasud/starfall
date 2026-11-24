@@ -100,7 +100,7 @@ export function Starfield() {
     [],
   )
 
-  useFrame((state) => {
+  useFrame(() => {
     sampleAtmosphere(journey.u)
     material.uniforms.uTime.value = journey.time
     material.uniforms.uAmount.value = Math.min(1, atmosphere.stars * 1.2)
