@@ -35,9 +35,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // the visual-QA tunnel reaches the preview server by a generated hostname
+    allowedHosts: true,
   },
   preview: {
     port: 4173,
     strictPort: true,
+    allowedHosts: true,
   },
 })

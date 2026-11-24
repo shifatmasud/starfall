@@ -104,6 +104,8 @@ a {
   height: 100% !important;
   touch-action: pan-y;
   outline: none;
+  /* the grade: the reference is saturated and crisp, the tonemap alone reads soft */
+  filter: saturate(1.16) contrast(1.06) brightness(1.02);
 }
 
 .canvas-fallback {

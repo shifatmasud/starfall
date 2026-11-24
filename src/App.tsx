@@ -1,19 +1,13 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useMotionValueEvent, useScroll } from 'framer-motion'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Soundscape } from './audio/Soundscape'
 import { createWebGL2Context, describeRenderer, type RendererInfo } from './gl/webgl2'
 import { PostFX, trailRef } from './gl/PostFX'
-import { CameraRig } from './scene/atmosphere/CameraRig'
-import { OrbSlot, WaterSlot, WorldSlot } from './scene/atmosphere/StageSlots'
-import { SkyCloudsGodrays } from './scene/atmosphere/SkyCloudsGodrays'
-import { WeatherSystem } from './scene/atmosphere/WeatherSystem'
-import { atmosphere, journey, sampleAtmosphere } from './scene/atmosphere/atmosphereState'
 import { capDpr, TIER } from './scene/atmosphere/quality'
-import { BeatOverlay, type BeatCopy } from './ui/BeatOverlay'
-import { Footer } from './ui/Footer'
-import { Header } from './ui/Header'
+import { Stage } from './v2/Stage'
+import { live, sampleLive } from './v2/palettes'
 import { Preloader } from './ui/Preloader'
 
 declare global {
@@ -39,7 +33,7 @@ const QA_BUFFER = new URLSearchParams(window.location.search).has('qa')
  * The eight chapters. Copy follows love-letter's register: an eyebrow `NN — The place`, a title of
  * four words or fewer, and one or two quiet sentences.
  */
-const BEATS: BeatCopy[] = [
+const BEATS: Array<{ id: string; [key: string]: unknown }> = [
   {
     id: 'space',
     eyebrow: '01 — Above the sky',
@@ -107,13 +101,15 @@ function ReadyProbe({ onFirstFrame }: { onFirstFrame: () => void }) {
 }
 
 /** Keeps the nav's colour honest: cream over the dark dives, ink over the light sky. */
-function ToneProbe({ onChange }: { onChange: (onDark: boolean) => void }) {
+function ToneProbe({ progress, onChange }: { progress: { get: () => number }; onChange: (onDark: boolean) => void }) {
   const last = useRef(true)
   useFrame(() => {
-    sampleAtmosphere(journey.u)
+    const u = Math.min(7, Math.max(0, progress.get() * 7))
+    sampleLive(u)
     window.__ORB_FRAME__ = (window.__ORB_FRAME__ ?? 0) + 1
-    const dark = atmosphere.tone > 0.5
-    document.documentElement.dataset.orbU = journey.u.toFixed(2)
+    const luma = 0.2126 * live.horizon[0] + 0.7152 * live.horizon[1] + 0.0722 * live.horizon[2]
+    const dark = luma < 0.42
+    document.documentElement.dataset.orbU = u.toFixed(2)
     document.documentElement.dataset.orbTone = dark ? 'dark' : 'light'
     if (dark !== last.current) {
       last.current = dark
@@ -125,8 +121,9 @@ function ToneProbe({ onChange }: { onChange: (onDark: boolean) => void }) {
 
 export default function App() {
   const { scrollYProgress } = useScroll()
-  const [muted, setMuted] = useState(() => Soundscape.isMuted())
-  const [onDark, setOnDark] = useState(true)
+  const [, setMuted] = useState(() => Soundscape.isMuted())
+  void setMuted
+  const [, setOnDark] = useState(true)
   const [fonts, setFonts] = useState(false)
   const [framed, setFramed] = useState(false)
   const [grace, setGrace] = useState(false)
@@ -202,32 +199,32 @@ export default function App() {
     window.__ORB_READY__ = true
   }, [])
 
-  const toggleSound = useCallback(() => {
-    Soundscape.boot()
-    const next = !Soundscape.isMuted()
-    Soundscape.setMuted(next)
-    setMuted(next)
-  }, [])
 
-  const onStageMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    // the water answers the pointer: a quiet crystalline ring, panned where the hand is
-    if (journey.u < 3.4) return
-    const pan = (event.clientX / window.innerWidth - 0.5) * 1.6
-    Soundscape.ripple(pan, 0.55)
-  }, [])
+  const uNow = useCallback(() => Math.min(7, Math.max(0, scrollYProgress.get() * 7)), [scrollYProgress])
 
-  const onStageWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    if (journey.u < 3.4) return
-    Soundscape.ripple((Math.random() * 2 - 1) * 0.7, 0.35 + Math.min(0.6, Math.abs(event.deltaY) / 900))
-  }, [])
+  const onStageMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      // the water answers the pointer: a quiet crystalline ring, panned where the hand is
+      if (uNow() < 3.4) return
+      const pan = (event.clientX / window.innerWidth - 0.5) * 1.6
+      Soundscape.ripple(pan, 0.55)
+    },
+    [uNow],
+  )
+
+  const onStageWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      if (uNow() < 3.4) return
+      Soundscape.ripple((Math.random() * 2 - 1) * 0.7, 0.35 + Math.min(0.6, Math.abs(event.deltaY) / 900))
+    },
+    [uNow],
+  )
 
   const dpr = capDpr()
-  const bloom = useMemo(() => (TIER === 'low' ? 0.34 : 0.46), [])
+  const bloom = useMemo(() => (TIER === 'low' ? 0.22 : 0.3), [])
 
   return (
     <div className="app" data-testid="app">
-      <Header onDark={onDark} muted={muted} onSound={toggleSound} />
-
       <div className="sheet">
         <div className="stage" onPointerMove={onStageMove} onWheel={onStageWheel}>
           <div className="canvas-layer">
@@ -248,16 +245,11 @@ export default function App() {
               }}
               fallback={<div className="canvas-fallback">This journey needs WebGL2.</div>}
             >
-              <CameraRig progress={scrollYProgress} />
-              <SkyCloudsGodrays />
-              <WeatherSystem />
-              <OrbSlot progress={scrollYProgress} />
-              <WorldSlot progress={scrollYProgress} />
-              <WaterSlot progress={scrollYProgress} />
-              <ambientLight intensity={0.6} />
-              <directionalLight position={[6, 14, 8]} intensity={1.1} color="#FFF1D8" />
+              <Suspense fallback={null}>
+                <Stage progress={scrollYProgress} />
+              </Suspense>
               <ReadyProbe onFirstFrame={onFirstFrame} />
-              <ToneProbe onChange={setOnDark} />
+              <ToneProbe progress={scrollYProgress} onChange={setOnDark} />
               <PostFX bloom={bloom} exposure={1.24} />
             </Canvas>
           </div>
@@ -271,12 +263,9 @@ export default function App() {
             <section key={beat.id} className="beat" data-beat={index} aria-hidden="true" />
           ))}
         </main>
-
-        <BeatOverlay progress={scrollYProgress} beats={BEATS} />
       </div>
 
       <div className="foot-space" ref={footSpace} aria-hidden="true" />
-      <Footer />
       <Preloader
         progress={framed ? 1 : fonts ? 0.82 : 0.45}
         done={done}
