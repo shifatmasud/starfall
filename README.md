@@ -20,5 +20,3 @@ npm run qa:visual  # SwiftShader screenshots of every chapter, desktop + mobile
 ```
 
 Live: https://starfall.vercel.app
-
-<!-- deploy: vite build, output dist -->

@@ -1,0 +1,22 @@
+flora textures — ORB-Journey
+============================
+
+foliage-atlas.png
+  A 4 x 3 cell atlas (256 px cells) composed for this project from three
+  textures that ship with `shifatmasud/shade-verse` (CC0), no new third-party
+  pixels added:
+    · cell (0,0)  pine twig        — shade-verse `public/pine.png`,
+      derived from Poly Haven `pine_tree_01` (CC0). The twig was cropped out of
+      the source sheet and a few grey background fragments at its base cleared.
+    · cells (1,0) (2,0) (3,0)      — three leaves isolated from shade-verse
+      `public/shrub134.png` — "Shrub01" by Rico Cilliers, Poly Haven, CC0
+      (https://polyhaven.com/a/shrub_01), re-composed there from the packed
+      bark/stem atlas. Card bounds are tighter here; pixels unchanged.
+    · cells (0..3, 1..2)           — eight individual leaves from shade-verse
+      `public/leaves.png`, derived from Poly Haven `island_tree_01` (CC0).
+  Licence: CC0 1.0 (https://polyhaven.com/license). Original credit lines are in
+  `shade-verse/public/CREDITS-trees.txt`.
+
+grass-tuft.png
+  Painted for this project (generated procedurally, 26 tapered blades in three
+  flat greens on transparent). No third-party source.
