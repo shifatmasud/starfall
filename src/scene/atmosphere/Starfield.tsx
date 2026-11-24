@@ -35,9 +35,9 @@ void main() {
   vec4 mv = modelViewMatrix * vec4(aStar, 1.0);
   gl_Position = projectionMatrix * mv;
   float twinkle = 0.78 + 0.22 * sin(uTime * (1.1 + aData.y) + aData.z * 6.2831);
-  vAlpha = uAmount * (0.35 + 0.65 * aData.x) * twinkle;
+  vAlpha = uAmount * (0.45 + 0.55 * aData.x) * twinkle;
   vTint = mix(vec3(1.0, 0.86, 0.68), vec3(0.76, 0.86, 1.0), aData.y);
-  gl_PointSize = clamp((0.6 + aData.w * 2.6) * aData.x * 9.0, 0.8, 6.5);
+  gl_PointSize = clamp((2.0 + aData.w * 5.0) * (0.35 + 0.95 * aData.x), 1.6, 9.0);
 }
 `
 
@@ -49,8 +49,8 @@ void main() {
   vec2 uv = gl_PointCoord * 2.0 - 1.0;
   float d = dot(uv, uv);
   if (d > 1.0) discard;
-  float core = pow(smoothstep(1.0, 0.0, d), 1.6);
-  fragColor = vec4(vTint, core * vAlpha);
+  float core = pow(smoothstep(1.0, 0.0, d), 1.5);
+  fragColor = vec4(vTint * (1.0 + vAlpha), core * vAlpha);
 }
 `
 
