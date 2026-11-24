@@ -3,6 +3,7 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { atmosphere, journey, sampleAtmosphere } from './atmosphereState'
 import { TIER } from './quality'
+import { Starfield } from './Starfield'
 
 /**
  * The sky — WebGL2 / GLSL ES 3.00 only.
@@ -575,6 +576,7 @@ export function SkyCloudsGodrays() {
   return (
     <>
       <SkyDome />
+      <Starfield />
       <CloudSea />
       <CloudWisps />
     </>
