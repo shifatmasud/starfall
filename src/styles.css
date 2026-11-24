@@ -1,0 +1,616 @@
+/* ============================================================================
+   ORB-Journey — the love-letter design system (REUSE_AUDIT §1.1–1.6)
+   Tokens, header, ink button, pinned text slot, rounded sheet over a fixed dark
+   footer, stepped grain and scrim. Nothing here is invented: the numbers are the
+   ones in `love-letter/index.html` and `surface-tension/src/styles/tokens.css`.
+   ========================================================================== */
+
+:root {
+  --ink: #332b29; /* warm near-black ink: nav over a light sky, CTA fill */
+  --cream: #fff8ea; /* text on the painted scene */
+  --page: #121315; /* page + footer */
+  --sheet: #1d2430; /* the sheet's own fill, seen at its rounded corners */
+  --r: 36px; /* the sheet's bottom corner radius (28px ≤620px) */
+  --wrap-w: 1200px;
+  --pad-x: clamp(22px, 4vw, 48px);
+  --s2: 16px;
+  --s3: 24px;
+  --s4: 40px;
+  --s5: 64px;
+  --fs-small: 12.5px;
+  --font: 'Allo Round', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+
+  /* house motion (surface-tension core/house.ts) */
+  --ease: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-in: 1s;
+  --dur-out: 0.6s;
+  --dur-ui: 0.6s;
+  --dur-fade: 0.24s;
+
+  color-scheme: dark;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--page);
+}
+
+html.pre-lock,
+html.pre-lock body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.2;
+  overflow-x: hidden;
+  font-feature-settings: 'ss01';
+}
+
+a {
+  color: inherit;
+}
+
+.wrap {
+  max-width: var(--wrap-w);
+  margin: 0 auto;
+  padding: 0 var(--pad-x);
+}
+
+/* ---------- the sheet: the painted scene scrolls over the dark footer ---------- */
+
+.sheet {
+  position: relative;
+  z-index: 1;
+  background: var(--sheet);
+  border-radius: 0 0 var(--r) var(--r);
+  overflow: clip;
+  clip-path: inset(0 round 0 0 var(--r) var(--r)); /* also rounds the WebGL canvas */
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100lvh;
+  margin-bottom: -100vh;
+  margin-bottom: -100lvh;
+  z-index: 0;
+  overflow: hidden;
+  background: #0d1218;
+}
+
+.canvas-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.canvas-layer canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: pan-y;
+  outline: none;
+}
+
+.canvas-fallback {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 248, 234, 0.62);
+}
+
+/* cheap film look: CSS layers, no full-screen post pass */
+.stage .vig {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 42%, rgba(0, 0, 0, 0) 55%, rgba(24, 16, 22, 0.34) 100%);
+}
+
+.stage .grain {
+  position: absolute;
+  inset: -60px;
+  pointer-events: none;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  animation: grain 1s steps(6) infinite;
+}
+
+@keyframes grain {
+  0% {
+    transform: translate(0, 0);
+  }
+  17% {
+    transform: translate(-23px, 11px);
+  }
+  33% {
+    transform: translate(17px, -29px);
+  }
+  50% {
+    transform: translate(-9px, 31px);
+  }
+  67% {
+    transform: translate(29px, 7px);
+  }
+  83% {
+    transform: translate(-31px, -17px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* the text scrim lives inside the stage, so it clips with the sheet's rounded bottom */
+.stage .scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38vh;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(10, 16, 14, 0.52), rgba(10, 16, 14, 0.2) 45%, rgba(10, 16, 14, 0));
+}
+
+/* ---------- header: Cost of Design nav, fixed for the whole page ---------- */
+
+.hdr-fix {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.hdr-fix header > * {
+  pointer-events: auto;
+}
+
+header {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 28px 0;
+  color: var(--ink); /* over a light sky */
+  transition: color 0.45s ease; /* colour only: no shadow, glow or scrim on UI */
+}
+
+.mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-left: -11px; /* optical */
+  border-radius: 50%;
+  touch-action: pan-y;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+.mark:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.mark i {
+  width: 26px;
+  height: 26px;
+  display: block;
+  flex: none;
+}
+
+.mark i svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.mark::after {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: -20px;
+  width: 88px;
+  height: 88px;
+}
+
+header.on-dark {
+  color: #fff;
+}
+
+.pill {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: 600 16px/1 var(--font);
+  color: #fff;
+  background: var(--ink);
+  border: 0;
+  border-radius: 999px;
+  padding: 15px 24px;
+  cursor: pointer;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+
+.pill--sound {
+  overflow: hidden;
+  height: 44px;
+  min-width: 44px;
+  margin-right: -10px;
+  padding: 0 11px;
+  color: inherit;
+  background: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+.pill--sound:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.sroll {
+  position: relative;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  width: 22px;
+  height: 14px;
+}
+
+.sroll .ir-a,
+.sroll .ir-b {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+.sroll .ir-b {
+  transform: translate3d(0, 100%, 0);
+}
+
+.snd-wave {
+  width: 22px;
+  height: 14px;
+  display: block;
+}
+
+/* the ink flood: a circle clipped to the pointer, filled with the current colour */
+.pill .ink {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  visibility: hidden;
+  clip-path: circle(0px at 0px 0px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: currentColor;
+  border-radius: inherit;
+  color: var(--cream);
+}
+
+.pill--sound .ink {
+  color: #fff; /* the flood is white over the scene, so its wave inverts to ink */
+}
+
+.pill--sound .ink .snd-wave {
+  filter: invert(1);
+}
+
+.pill:not(.pill--sound) .ink {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+/* ---------- the pinned text slot (Surface Tension `.slot`) ---------- */
+
+.slot__beat {
+  position: fixed;
+  bottom: var(--s5);
+  z-index: 3;
+  height: 0;
+  left: calc(max(0px, (100% - var(--wrap-w)) / 2) + var(--pad-x));
+  right: calc(max(0px, (100% - var(--wrap-w)) / 2) + var(--pad-x));
+  color: var(--cream);
+  pointer-events: none;
+}
+
+.slot__copy {
+  position: absolute;
+  transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 40px;
+  text-shadow:
+    0 1px 18px rgba(20, 14, 18, 0.45),
+    0 0 2px rgba(20, 14, 18, 0.25);
+}
+
+.slot__eyebrow {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin: 0 0 var(--s3);
+  font-size: var(--fs-small);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.45;
+  opacity: 0.86;
+}
+
+.slot__title {
+  flex: 0 1 auto;
+  margin: 0;
+  font-size: 56px;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  text-align: left;
+  font-weight: 400;
+}
+
+.slot__body {
+  flex: 0 1 36ch;
+  max-width: 36ch;
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-align: left;
+  font-weight: 400;
+}
+
+.slot__line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+
+.slot__title .slot__line {
+  padding-top: 0.04em;
+}
+
+.slot__in {
+  display: inline-block;
+  transform: translate3d(0, 110%, 0);
+  will-change: transform;
+}
+
+/* the sections only give scroll length — the words are pinned */
+.beats {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.beat {
+  height: 100vh;
+  height: 100lvh;
+}
+
+/* ---------- footer: Cost of Design curtain ---------- */
+
+.foot-space {
+  height: 190px;
+}
+
+footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  background: var(--page);
+  color: #f5f3ef;
+  font-size: 15px;
+  padding: 40px 0 calc(48px + env(safe-area-inset-bottom, 0px));
+  contain: layout paint;
+}
+
+footer .wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+footer .dim {
+  color: rgba(245, 243, 239, 0.62);
+}
+
+.foot-mark {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 16px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
+}
+
+.foot-mark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.foot-mark:focus-visible {
+  outline: 2px solid #f5f3ef;
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.foot-mark::after {
+  content: '';
+  position: absolute;
+  left: -29px;
+  right: -29px;
+  top: -40px;
+  bottom: -10px;
+}
+
+.foot-name {
+  position: relative;
+  white-space: nowrap;
+  text-decoration: none;
+  padding: 12px 0;
+  margin: -12px 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.25s ease;
+}
+
+.foot-name::before,
+.foot-name::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  height: 1px;
+  background: rgba(245, 243, 239, 0.35);
+  pointer-events: none;
+}
+
+.foot-name::after {
+  background: #f5f3ef;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.foot-name:focus-visible::after,
+.foot-name.is-tap::after {
+  transform: scaleX(1);
+  transition-duration: 0.65s;
+  transition-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+}
+
+@media (hover: hover) {
+  .foot-name:hover::after {
+    transform: scaleX(1);
+    transition-duration: 0.65s;
+    transition-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+  }
+}
+
+.foot-name:active {
+  opacity: 0.7;
+}
+
+/* ---------- preloader ---------- */
+
+#pre {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  display: grid;
+  place-items: center;
+  transition:
+    transform 1.3s cubic-bezier(0.65, 0, 0.35, 1),
+    opacity 0.5s ease;
+  will-change: transform;
+}
+
+#pre canvas {
+  width: 176px;
+  height: 72px;
+  display: block;
+}
+
+#pre.up {
+  transform: translate3d(0, -100%, 0);
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 640px) {
+  :root {
+    --r: 28px;
+  }
+
+  header {
+    padding: 20px 0;
+  }
+
+  .slot__beat {
+    bottom: calc(var(--s4) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .slot__copy {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 16px;
+  }
+
+  .slot__title {
+    font-size: clamp(34px, 10.4vw, 56px);
+  }
+
+  .slot__body {
+    flex: 0 0 auto;
+    font-size: 17px;
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage .grain {
+    animation: none;
+  }
+
+  .slot__in {
+    transition: none;
+  }
+
+  #pre {
+    transition: opacity 0.35s ease;
+  }
+
+  #pre.up {
+    transform: none;
+    opacity: 0;
+  }
+}
