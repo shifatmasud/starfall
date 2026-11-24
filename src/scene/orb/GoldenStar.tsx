@@ -104,9 +104,9 @@ void main() {
   float key = 0.5 + 0.5 * dot(vLocalPos, normalize(vec3(-0.5, 0.66, 0.56)));
   color *= 0.94 + 0.12 * key;
 
-  // 4 — the limb glows warmer and a touch brighter than the body (thin, hot edge — not a ring)
-  color += uLimb * pow(limb, 2.4) * 0.55;
-  color += uCore * pow(limb, 9.0) * 0.9;
+  // 4 — the limb glows: a hot rim of scattered light, never a dark silhouette
+  color = mix(color, mix(uLimb, uHot, 0.45), smoothstep(0.35, 1.0, limb) * 0.85);
+  color += uHot * pow(limb, 6.0) * 1.1;
 
   // 5 — breath, and a little more presence as the fall deepens
   float breath = 1.0 + 0.025 * sin(uTime * 0.6);

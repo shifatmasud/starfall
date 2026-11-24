@@ -139,15 +139,15 @@ vec3 starField(vec3 d) {
     vec2 id = floor(g);
     vec2 f = fract(g);
     float r = hash21(id + float(layer) * 41.7);
-    float mag = layer == 0 ? smoothstep(0.90, 0.999, r) : smoothstep(0.80, 0.995, r) * 0.55;
+    float mag = layer == 0 ? smoothstep(0.86, 0.997, r) : smoothstep(0.72, 0.99, r) * 0.6;
     if (mag <= 0.001) continue;
     vec2 pos = vec2(hash21(id + 3.7), hash21(id + 8.1)) * 0.7 + 0.15;
     float dd = length(f - pos);
-    float size = layer == 0 ? 0.055 : 0.085;
+    float size = layer == 0 ? 0.11 : 0.14;
     float core = smoothstep(size, 0.0, dd);
     float tw = 0.82 + 0.18 * sin(uTime * 1.7 + r * 63.0);
     vec3 tint = mix(vec3(1.0, 0.86, 0.66), vec3(0.78, 0.88, 1.0), hash21(id + 12.3));
-    acc += tint * core * mag * tw * (layer == 0 ? 2.4 : 1.2);
+    acc += tint * core * mag * tw * (layer == 0 ? 3.4 : 1.8);
   }
   return acc;
 }
