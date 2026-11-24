@@ -113,7 +113,7 @@ void main() {
   color *= breath * (0.97 + 0.06 * uProgress);
 
   // 6 — HDR: the centre sits above display white so the selective bloom catches only this
-  float hdr = mix(1.35, 2.7, pow(ndv, 1.6));
+  float hdr = mix(1.25, 2.05, pow(ndv, 1.6));
   fragColor = vec4(color * hdr, 1.0);
 }
 `

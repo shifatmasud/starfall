@@ -102,7 +102,7 @@ vec4 cloudDeck(vec3 d, float height, float scale, float coverage, float softness
   float detail = fbm3(q * 2.55 + vec2(19.1, 4.7));
   float field = n * 0.76 + detail * 0.30;
 
-  float horizonFade = smoothstep(0.015, 0.26, d.y);
+  float horizonFade = smoothstep(0.008, 0.10, d.y);
   float dens = smoothstep(coverage, coverage + softness, field) * horizonFade;
   if (dens < 0.003) return vec4(0.0);
 
@@ -191,7 +191,7 @@ void main() {
   }
 
   // ---- clouds: two FBM decks under the open sky (the fall passes through the lower one)
-  vec4 highDeck = cloudDeck(d, 320.0, 0.0065, 0.56, 0.16, 0.0, 0.62);
+  vec4 highDeck = cloudDeck(d, 150.0, 0.0125, 0.52, 0.15, 0.0, 0.62);
   col = col * (1.0 - highDeck.a) + highDeck.rgb * highDeck.a;
 
   // the sun: a tight HDR glow, never a hard disc — the bloom makes it read as a sun
