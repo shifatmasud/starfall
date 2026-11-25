@@ -115,13 +115,13 @@ const FOREST: ChapterPalette = {
   // raking, not overhead: a near-zenith sun is stopped dead by the canopy, which is what left the
   // floor lit by ambient only and the whole chapter reading murky green
   sunDir: [0.36, 0.66, -0.44],
-  sunPower: 6.2,
+  sunPower: 3.3,
   ambient: '#e8f6d8',
-  ambientPower: 3.2,
+  ambientPower: 1.7,
   fog: '#d3e6c9',
   fogDensity: 0.007,
-  ground: '#5d7c45',
-  groundAlt: '#c9c0a3',
+  ground: '#54703f',
+  groundAlt: '#9aa585',
   water: null,
   waterDeep: null,
   stars: 0,

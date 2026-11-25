@@ -174,7 +174,7 @@ export function PostFX({ bloom = 0.45, exposure = 1.24, focusDistance = 0 }: Pos
     const dof = new DepthOfFieldEffect(camera, {
       focusDistance: 0.02,
       focalLength: 0.035,
-      bokehScale: 1.15,
+      bokehScale: 2.0,
       resolutionScale: 1.0,
     })
     dof.blendMode.opacity.value = 1
@@ -215,7 +215,7 @@ export function PostFX({ bloom = 0.45, exposure = 1.24, focusDistance = 0 }: Pos
     // focus rides the camera's own forward axis: whatever the composer puts in the middle band is
     // what is sharp, which is how the reference is focused
     const far = camera.far || 1000
-    const dist = focusDistance > 0 ? focusDistance : 38
+    const dist = focusDistance > 0 ? focusDistance : 20
     const coc = composer.dof.circleOfConfusionMaterial as unknown as { uniforms: Record<string, THREE.Uniform> }
     const focus = coc.uniforms.focusDistance
     if (focus) focus.value = THREE.MathUtils.clamp(dist / far, 0, 1)
