@@ -11,10 +11,29 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
  */
 
 export const MODEL_URLS = {
-  fir: '/models/opt/fir.glb',
-  broadleaf: '/models/opt/broadleaf.glb',
+  pine: '/models/opt2/pine_sapling_small.glb',
+  leafTree: '/models/opt2/island_tree_02.glb',
+  deadTrunk: '/models/opt2/dead_tree_trunk_02.glb',
+  fern: '/models/opt2/fern_02.glb',
+  moss: '/models/opt2/moss_01.glb',
+  daisy: '/models/opt2/flower_ursinia.glb',
+  rock: '/models/opt2/rock_07.glb',
+  cliff: '/models/opt2/coastal_cliff_02.glb',
+  ridge: '/models/opt2/mountainside.glb',
   boulder: '/models/opt/boulder.glb',
-  grass: '/models/opt/grass.glb',
+  grass: '/models/opt2/grass_medium_02.glb',
+  // Megascans tufted grass: the scanned clump with its own B-O cut-out, so the meadow floor is a
+  // scan rather than a Poly Haven strip
+  grassGreen: '/models/ms2/tufted_grass_tdcnfcdr/tufted_grass_tdcnfcdr.gltf',
+  // real Megascan grass plants, not one repeated clump: a clump scan for the near band, wild grass
+  // for the middle distance, so the floor has two silhouettes instead of one
+  grassClump: '/models/ms2/grass_clumps_rbdoo/grass_clumps_rbdoo.gltf',
+  wildGrass: '/models/ms2/wild_grass_vlkhcbxia/wild_grass_vlkhcbxia.gltf',
+  // Megascans: a whole spruce trunk with its branches, and the forest boulder. The trunk is the
+  // column a wood is built from; the Poly Haven sapling stretched to 30 m was what read as a
+  // mangrove, because a sapling's flared base at that scale is a mangrove's flared base.
+  spruce: '/models/ms/nordic_forest_tree_trunk_spruce_large/Nordic_Forest_Tree_Trunk_Spruce_Large_xeticd0ga_Low.gltf',
+  msBoulder: '/models/ms/forest_boulder/Forest_Boulder_wgosajs_Low.gltf',
 } as const
 
 export type ModelKey = keyof typeof MODEL_URLS
@@ -45,10 +64,24 @@ export function useModels(): Models {
             entry.transparent = false
             entry.alphaTest = 0.42
             entry.depthWrite = true
+            // leaf cards are thin, and at 150 m a mipmapped alpha test punches holes through the
+            // canopy until it reads as white speckle. Alpha-to-coverage keeps the silhouette.
+            entry.alphaToCoverage = true
           }
         }
       }
     })
+    // the tufted grass scan carries a very bright green albedo; against the forest floor it reads as
+    // neon and it was the brightest thing in every frame. Tinted down once, at load, so every clump
+    // agrees and the near grass stops competing with the pearl.
+    if (key === 'grassGreen') {
+      scene.traverse((child) => {
+        const mesh = child as THREE.Mesh
+        if (!mesh.isMesh) return
+        const list = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as THREE.MeshStandardMaterial[]
+        for (const entry of list) if (entry?.color) entry.color.multiplyScalar(0.68)
+      })
+    }
     models[key] = scene
   })
   return models

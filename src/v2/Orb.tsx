@@ -30,11 +30,11 @@ export function Orb({ streak }: { streak: boolean }) {
   const glass = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
-        color: '#c6d2f0',
+        color: '#dfe8ff',
         metalness: 0,
         roughness: 0.08,
         transparent: true,
-        opacity: 0.44,
+        opacity: 0.58,
         clearcoat: 1,
         clearcoatRoughness: 0.06,
         iridescence: 0.9,
@@ -123,11 +123,11 @@ export function Orb({ streak }: { streak: boolean }) {
         ))}
       </group>
 
-      <sprite scale={[0.75, 0.75, 1]}>
-        <spriteMaterial map={halo} transparent depthWrite={false} blending={THREE.AdditiveBlending} opacity={0.05} toneMapped={false} />
+      <sprite scale={[0.5, 0.5, 1]}>
+        <spriteMaterial map={halo} transparent depthWrite={false} blending={THREE.AdditiveBlending} opacity={0.1} toneMapped={false} />
       </sprite>
-      <sprite scale={[1.5, 1.5, 1]}>
-        <spriteMaterial map={glow} transparent depthWrite={false} blending={THREE.AdditiveBlending} opacity={0.03} toneMapped={false} />
+      <sprite scale={[1.2, 1.2, 1]}>
+        <spriteMaterial map={glow} transparent depthWrite={false} blending={THREE.AdditiveBlending} opacity={0.05} toneMapped={false} />
       </sprite>
 
       {/* two thin rings, tilted like the reference's: they read as glass orbits, not hoops */}
