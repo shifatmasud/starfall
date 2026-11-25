@@ -90,12 +90,12 @@ void main() {
 
   vec3 col = inside * (0.65 + 0.45 * sunSide);
   col += vec3(0.07, 0.10, 0.16) * (0.30 + 0.70 * swirl);
-  col += film * (0.10 + 0.50 * fres) * (0.45 + 1.10 * swirl);
+  col += film * (0.14 + 0.55 * fres) * (0.50 + 1.15 * swirl);
   col += vec3(1.0, 0.74, 0.38) * smoothstep(0.60, 0.95, swirl2) * (0.12 + 0.50 * fres) * (0.35 + 0.65 * sunSide);
 
   // the star at the centre, burning through the glass
   float core = pow(clamp(dot(-N, normalize(vec3(0.10, 0.02, 1.0))), 0.0, 1.0), 6.0);
-  col += vec3(1.0, 0.90, 0.72) * core * 1.10;
+  col += vec3(1.0, 0.86, 0.64) * core * 1.45;
   col += vec3(1.0, 0.97, 0.90) * pow(core, 4.0) * (1.5 + 1.2 * sunSide);
 
   // the shell: a hard white crest all round, hottest on the sun side
