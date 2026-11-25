@@ -1,7 +1,8 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { PostFX } from '../gl/PostFX'
+import { SceneCanvas } from '../components/SceneCanvas'
 import { SpaceBackdrop } from './SpaceBackdrop'
 import { CrystalStarOrb } from '../components/CrystalStarOrb'
 import { Asteroids } from './Asteroids'
@@ -65,28 +66,12 @@ function Inner() {
 
 export function Scene1Space() {
   return (
-    <Canvas
-      flat
-      dpr={Math.min(window.devicePixelRatio || 1, 2)}
+    <SceneCanvas
+      clear="#04060c"
       camera={{ position: [0, 0, CAM_Z], fov: 40, near: 0.05, far: 60 }}
-      gl={{
-        antialias: true,
-        alpha: false,
-        powerPreference: 'high-performance',
-        preserveDrawingBuffer: new URLSearchParams(location.search).has('qa'),
-      }}
-      onCreated={({ gl }) => {
-        gl.setClearColor('#04060c', 1)
-        window.__ORB_FRAME__ = 0
-      }}
+      poster={{ portrait: '/poster/scene1-portrait.webp', landscape: '/poster/scene1-landscape.webp' }}
     >
       <Inner />
-    </Canvas>
+    </SceneCanvas>
   )
-}
-
-declare global {
-  interface Window {
-    __ORB_FRAME__?: number
-  }
 }

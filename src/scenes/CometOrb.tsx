@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Layout } from '../scenes/layout'
 import { CrystalStarOrb } from '../components/CrystalStarOrb'
+import { at, sizeAt } from './scene2/frame'
 
 /**
  * The diving crystal star and its comet wake.
@@ -25,8 +26,6 @@ const TAIL_FRAG = /* glsl */ `
 precision highp float;
 in vec2 vUv;
 uniform float uTime;
-uniform float uLength;
-uniform float uWidth;
 layout(location = 0) out vec4 fragColor;
 
 float h21(vec2 p) {
@@ -54,48 +53,40 @@ float fbm(vec2 p) {
 }
 
 void main() {
-  // t = 0 at the orb, 1 at the far end of the wake
+  // t = 0 at the crystal, 1 at the far end of the wake
   float t = clamp(vUv.x, 0.0, 1.0);
-  float y = (vUv.y - 0.5) * 2.0;                 // -1..1 across the tail
-
-  // the sheet opens as it leaves the orb, and frays at its end
-  float halfW = mix(0.22, 1.05, pow(t, 0.60));
+  float y = (vUv.y - 0.5) * 2.0;                     // -1..1 across the tail
+  float halfW = mix(0.10, 0.50, pow(t, 0.55));
   float across = abs(y) / max(halfW, 0.001);
 
-  // filaments: stretched noise streaming back from the head
-  float f1 = fbm(vec2(t * 3.0 - uTime * 0.16, y * 2.6 + 3.0));
-  float f2 = fbm(vec2(t * 6.4 - uTime * 0.30, y * 5.6 + 9.0));
-  float filament = smoothstep(0.26, 0.86, f1 * 0.60 + f2 * 0.40);
+  // a hot core that leaves the crystal and thins as it goes, inside a soft sheath of light
+  float core = exp(-across * across * 3.4) * exp(-t * 3.1);
+  float sheath = exp(-across * across * 0.85) * exp(-t * 1.25);
+  float streaks = smoothstep(0.30, 0.86, fbm(vec2(t * 5.5 - uTime * 0.22, y * 3.4 + 2.0))) * sheath;
 
-  float body = 1.0 - smoothstep(0.25, 1.0, across);
-  float fade = exp(-t * 1.7) * (1.0 - smoothstep(0.70, 1.0, t));
-  float head = exp(-t * 22.0);
+  vec3 white = vec3(1.0, 0.99, 0.97);
+  vec3 ice = vec3(0.72, 0.86, 1.0);
+  vec3 gold = vec3(1.0, 0.90, 0.74);
+  vec3 col = mix(ice, white, clamp(core * 1.6 + 0.35, 0.0, 1.0));
+  col = mix(col, gold, smoothstep(0.45, 1.0, t) * 0.45 * (1.0 - core));
 
-  vec3 ice = vec3(0.52, 0.76, 1.0);
-  vec3 white = vec3(0.95, 0.98, 1.0);
-  vec3 dust = vec3(1.0, 0.88, 0.72);
-  vec3 col = mix(ice, white, smoothstep(0.10, 0.80, body * (0.45 + filament * 0.85)));
-  col = mix(col, dust, smoothstep(0.50, 1.0, t) * 0.35);
-
-  float alpha = body * fade * (0.24 + 0.76 * filament) * 1.30;
-  alpha = max(alpha, body * head * 0.30);
+  float alpha = core * 1.55 + sheath * 0.42 + streaks * 0.55;
+  alpha *= smoothstep(0.0, 0.03, t);
 
   // sparkles: hashed points drifting back along the wake, each twinkling on its own clock
-  vec2 g = vec2(t * 34.0, vUv.y * 14.0);
+  vec2 g = vec2(t * 30.0, vUv.y * 13.0);
   vec2 cell = floor(g);
   vec2 f = fract(g) - 0.5;
   float h = h21(cell);
   vec2 off = vec2(h21(cell + 11.0), h21(cell + 23.0)) - 0.5;
-  float dot0 = 1.0 - smoothstep(0.0, 0.12, length((f - off * 0.7) * vec2(1.0, 1.3)));
-  float twinkle = 0.55 + 0.45 * sin(uTime * (1.3 + h * 2.0) + h * 30.0);
-  float spark = step(0.72, h) * dot0 * twinkle * (1.0 - smoothstep(0.30, 0.95, across)) * (1.0 - smoothstep(0.6, 1.0, t));
-  col += white * spark * 1.3;
-  alpha += spark * 0.45;
+  float dot0 = 1.0 - smoothstep(0.0, 0.14, length((f - off * 0.7) * vec2(1.0, 1.3)));
+  float twinkle = 0.45 + 0.55 * sin(uTime * (1.4 + h * 2.2) + h * 31.0);
+  float spark = step(0.80, h) * dot0 * twinkle * (1.0 - smoothstep(0.35, 1.0, across)) * (1.0 - smoothstep(0.25, 0.95, t));
+  col += white * spark * 2.4;
+  alpha += spark * 0.55;
 
-  // the head melts into the orb instead of starting at its skin
-  alpha += exp(-t * 30.0) * (1.0 - smoothstep(0.0, 0.9, across)) * 0.35;
-  col += white * head * (1.0 - smoothstep(0.0, 0.7, across)) * 0.35;
-
+  // fade out well inside the sheet, so the quad it is drawn on can never show an edge
+  alpha *= smoothstep(1.0, 0.45, across) * smoothstep(1.0, 0.80, t) * smoothstep(0.0, 0.05, t);
   alpha = clamp(alpha, 0.0, 1.0);
   fragColor = vec4(col * alpha, alpha);
 }
@@ -118,7 +109,9 @@ void main() {
 }
 `
 
-export function CometOrb({ layout }: { layout: Layout }) {
+export type CometPlace = { u: number; v: number; z: number; /** diameter as a share of the frame width */ frac: number }
+
+export function CometOrb({ layout, place }: { layout: Layout; place: CometPlace }) {
   const time = useRef(0)
   const group = useRef<THREE.Group>(null)
 
@@ -166,10 +159,12 @@ export function CometOrb({ layout }: { layout: Layout }) {
     [tailMat, glowMat],
   )
 
-  const { x, y, r } = layout.dive
-  const angle = Math.PI - 0.34
-  const length = layout.mobile > 0.5 ? 1.75 : 2.55
-  const width = layout.mobile > 0.5 ? 0.95 : 1.15
+  const { x, y, z } = { x: at(place.u, place.v, place.z, layout.aspect)[0], y: at(place.u, place.v, place.z, layout.aspect)[1], z: place.z }
+  const r = sizeAt(place.frac, place.frac, place.z, layout.aspect)[0] / 2
+  // the wake leaves the crystal toward the upper left, the way the plate's fall does
+  const angle = Math.PI - 0.30
+  const length = r * 7.2
+  const width = r * 2.6
 
   useFrame((_, delta) => {
     time.current += Math.min(delta, 1 / 20)
@@ -184,23 +179,23 @@ export function CometOrb({ layout }: { layout: Layout }) {
   })
 
   return (
-    <group ref={group} position={[x, y, 0]}>
+    <group ref={group} position={[x, y, z]}>
       {/* the wake, drawn behind the orb */}
       <mesh
         material={tailMat}
         rotation={[0, 0, angle]}
-        position={[Math.cos(angle) * length * 0.5, Math.sin(angle) * length * 0.5, -0.03]}
-        renderOrder={10}
+        position={[Math.cos(angle) * length * 0.5, Math.sin(angle) * length * 0.5, 0.02]}
+        renderOrder={0}
       >
         <planeGeometry args={[length, width, 1, 1]} />
       </mesh>
 
       {/* the crystal's halo */}
-      <mesh material={glowMat} position={[0, 0, -0.01]} renderOrder={11} scale={r * 9}>
+      <mesh material={glowMat} position={[0, 0, 0.03]} renderOrder={1} scale={r * 9}>
         <planeGeometry args={[1, 1]} />
       </mesh>
 
-      <CrystalStarOrb layout={{ ...layout, orb: { x: 0, y: 0, r } }} showSpaceRings={false} />
+      <CrystalStarOrb layout={{ ...layout, orb: { x: 0, y: 0, r } }} showSpaceRings={false} sky />
     </group>
   )
 }
