@@ -38,6 +38,14 @@ export function useModels(): Models {
           if (!entry) continue
           entry.side = THREE.DoubleSide
           if (entry.map) entry.map.colorSpace = THREE.SRGBColorSpace
+          // Scan foliage ships as alpha-blended cards (GLTF "BLEND"). Blended cards shade against
+          // themselves and read as black sticks, which is what the fir twigs and the grass clump were
+          // doing. Cut-out alpha keeps the scan's own image and gives back the canopy.
+          if (entry.transparent || entry.alphaTest > 0) {
+            entry.transparent = false
+            entry.alphaTest = 0.42
+            entry.depthWrite = true
+          }
         }
       }
     })
