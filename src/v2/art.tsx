@@ -1,40 +1,51 @@
-import { useLoader, useThree } from '@react-three/fiber'
-import { useEffect, useMemo } from 'react'
+import { useLoader } from '@react-three/fiber'
+import { useMemo } from 'react'
 import * as THREE from 'three'
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 
 /**
- * The art layer: CC0 photography from Poly Haven, used the way a renderer would use it.
+ * The art layer: Megascan photography only, used the way a renderer would use it.
  *
- * Albedo and normal maps on the ground, bark on the trunks, a cut-out leaf card for foliage, and a
- * real HDR sky driving image-based lighting, so metal, water and leaves pick up the sky instead of
- * a flat generated colour. Everything here is fetched by scripts/fetch-art.sh into public/art.
+ * Every surface here is a Quixel Megascan texture set downloaded from Fab as 2K and re-encoded to
+ * fit the browser, and every model is a Megascan scan. Nothing is a Poly Haven asset and nothing is
+ * invented: a chapter's ground, bark and rock are photographs of the real thing.
  */
 
-const BASE = '/art'
+const BASE = '/art/ms'
+const MODELS = '/models'
 
 export const GROUND_SETS: Record<string, { diff: string; nor: string }> = {
-  forest: { diff: `${BASE}/forrest_ground_01_diff.jpg`, nor: `${BASE}/forrest_ground_01_nor_gl.jpg` },
-  lake: { diff: `${BASE}/aerial_grass_rock_diff.jpg`, nor: `${BASE}/aerial_grass_rock_nor_gl.jpg` },
-  sky: { diff: `${BASE}/aerial_grass_rock_diff.jpg`, nor: `${BASE}/aerial_grass_rock_nor_gl.jpg` },
-  desert: { diff: `${BASE}/aerial_sand_diff.jpg`, nor: `${BASE}/aerial_sand_nor_gl.jpg` },
-  sea: { diff: `${BASE}/aerial_sand_diff.jpg`, nor: `${BASE}/aerial_sand_nor_gl.jpg` },
-  ice: { diff: `${BASE}/rocks_ground_04_diff.jpg`, nor: `${BASE}/rocks_ground_04_nor_gl.jpg` },
-  deep: { diff: `${BASE}/rocks_ground_04_diff.jpg`, nor: `${BASE}/rocks_ground_04_nor_gl.jpg` },
+  forest: { diff: `${BASE}/mossy_forest_floor_diff.jpg`, nor: `${BASE}/mossy_forest_floor_nor.jpg` },
+  lake: { diff: `${BASE}/lawn_grass_diff.jpg`, nor: `${BASE}/lawn_grass_nor.jpg` },
+  sky: { diff: `${BASE}/lawn_grass_diff.jpg`, nor: `${BASE}/lawn_grass_nor.jpg` },
+  desert: { diff: `${BASE}/beach_sand_diff.jpg`, nor: `${BASE}/beach_sand_nor.jpg` },
+  sea: { diff: `${BASE}/beach_sand_diff.jpg`, nor: `${BASE}/beach_sand_nor.jpg` },
+  ice: { diff: `${BASE}/fresh_snow_diff.jpg`, nor: `${BASE}/fresh_snow_nor.jpg` },
+  deep: { diff: `${BASE}/beach_sand_diff.jpg`, nor: `${BASE}/beach_sand_nor.jpg` },
 }
 
-const BARK = { diff: `${BASE}/bark_brown_01_diff.jpg`, nor: `${BASE}/bark_brown_01_nor_gl.jpg` }
+// Megascan fir bark and boulder rock, the same scans the trees and stones are built from
+const BARK = {
+  diff: `${MODELS}/fir_tree_01/textures/fir_tree_01_bark_diff_1k.jpg`,
+  nor: `${MODELS}/fir_tree_01/textures/fir_tree_01_bark_nor_gl_1k.jpg`,
+}
+
+const ROCK = {
+  diff: `${MODELS}/boulder_01/textures/boulder_01_diff_1k.jpg`,
+  nor: `${MODELS}/boulder_01/textures/boulder_01_nor_gl_1k.jpg`,
+}
 
 const unique = (list: string[]) => Array.from(new Set(list))
 
-const SNOW = { diff: `${BASE}/snow_02_diff.jpg`, nor: `${BASE}/snow_02_nor_gl.jpg` }
+const SNOW = { diff: `${BASE}/fresh_snow_diff.jpg`, nor: `${BASE}/fresh_snow_nor.jpg` }
 // Megascans Swamp Water, 2K texture set from Fab, downsampled to 1K
-const WATER = { diff: `${BASE}/water_diff.jpg`, nor: `${BASE}/water_nor.jpg` }
+const WATER = { diff: `${BASE}/../water_diff.jpg`, nor: `${BASE}/../water_nor.jpg` }
 
 export const ART_FILES = unique([
   ...Object.values(GROUND_SETS).flatMap((set) => [set.diff, set.nor]),
   BARK.diff,
   BARK.nor,
+  ROCK.diff,
+  ROCK.nor,
   SNOW.diff,
   SNOW.nor,
   WATER.diff,
@@ -103,8 +114,8 @@ export function useArt(): Art {
     })
 
     const rock = new THREE.MeshStandardMaterial({
-      map: map(GROUND_SETS.ice.diff, 4, true),
-      normalMap: map(GROUND_SETS.ice.nor, 4, false),
+      map: map(ROCK.diff, 4, true),
+      normalMap: map(ROCK.nor, 4, false),
       normalScale: new THREE.Vector2(1.1, 1.1),
       roughness: 0.85,
       metalness: 0,
@@ -237,26 +248,4 @@ export function rippleNormal(size = 256): THREE.Texture {
   return texture
 }
 
-/** Image-based lighting from a real sky, so reflections and bounce are the sky's, not a guess. */
-export function Environment({ intensity = 0.55 }: { intensity?: number }) {
-  const gl = useThree((state) => state.gl)
-  const scene = useThree((state) => state.scene)
-  const hdr = useLoader(RGBELoader, `${BASE}/sky.hdr`) as THREE.DataTexture
-
-  useEffect(() => {
-    const pmrem = new THREE.PMREMGenerator(gl)
-    const target = pmrem.fromEquirectangular(hdr)
-    scene.environment = target.texture
-    scene.environmentIntensity = intensity
-    return () => {
-      target.dispose()
-      pmrem.dispose()
-    }
-  }, [gl, hdr, scene, intensity])
-
-  useEffect(() => {
-    scene.environmentIntensity = intensity
-  }, [scene, intensity])
-
-  return null
-}
+/** Image-based lighting is gone with the photographed sky; the stage lights the world itself. */

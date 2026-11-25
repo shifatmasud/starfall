@@ -3,7 +3,7 @@ import { useMemo, useRef } from 'react'
 import type { MotionValue } from 'framer-motion'
 import * as THREE from 'three'
 import { CHAPTERS, chapterZ, live, sampleLive } from './palettes'
-import { Environment, useArt } from './art'
+import { useArt } from './art'
 import { useModels } from './models'
 import { buildSet } from './sets'
 import { Orb } from './Orb'
@@ -19,6 +19,10 @@ import { planetUniforms, rng, waterUniforms } from './world'
 
 const smooth = (f: number) => f * f * (3 - 2 * f)
 
+/** QA only: `?orbzoom=1` parks the lens on the pearl so the object can be judged on its own, away
+ *  from whatever chapter it happens to be sitting in. */
+const ORB_ZOOM = typeof window !== 'undefined' && /orbzoom/.test(window.location.search)
+
 function Sky() {
   const uniforms = useMemo(
     () => ({
@@ -28,6 +32,7 @@ function Sky() {
       uSunColor: { value: new THREE.Color() },
       uSunDir: { value: new THREE.Vector3(0, 1, 0) },
       uStars: { value: 0 },
+      uOpacity: { value: 1 },
     }),
     [],
   )
@@ -37,6 +42,7 @@ function Sky() {
       new THREE.ShaderMaterial({
         side: THREE.BackSide,
         depthWrite: false,
+        transparent: true,
         uniforms,
         vertexShader: `
           varying vec3 vDir;
@@ -51,6 +57,7 @@ function Sky() {
           uniform vec3 uZenith;
           uniform vec3 uSunColor;
           uniform vec3 uSunDir;
+          uniform float uOpacity;
           varying vec3 vDir;
           void main() {
             float h = clamp(vDir.y, -1.0, 1.0);
@@ -62,7 +69,7 @@ function Sky() {
             glow += uSunColor * pow(sun, 9.0) * 0.26;
             glow += uSunColor * pow(sun, 2.0) * 0.05;
             sky += glow;
-            gl_FragColor = vec4(sky, 1.0);
+            gl_FragColor = vec4(sky, uOpacity);
           }
         `,
       }),
@@ -76,6 +83,8 @@ function Sky() {
     uniforms.uSunColor.value.setRGB(live.sun[0], live.sun[1], live.sun[2])
     uniforms.uSunDir.value.set(live.sunDir[0], live.sunDir[1], live.sunDir[2])
     uniforms.uStars.value = live.stars
+    // one dome, owned by the palette: it never hands over to a photographed sky any more
+    uniforms.uOpacity.value = 1
   })
 
   return (
@@ -86,6 +95,7 @@ function Sky() {
   )
 }
 
+/** The stage's sky is the palette dome in `Sky`; there is no photographed sky in the scene. */
 function Stars() {
   const geometry = useMemo(() => {
     const r = rng(7)
@@ -145,6 +155,7 @@ export function Stage({ progress }: { progress: MotionValue<number> }) {
   const scene = useThree((state) => state.scene)
   const sun = useRef<THREE.DirectionalLight>(null)
   const fill = useRef<THREE.DirectionalLight>(null)
+  const sky = useRef<THREE.AmbientLight>(null)
   const orbGroup = useRef<THREE.Group>(null)
   const chapterIndex = useRef(0)
   const art = useArt()
@@ -184,7 +195,21 @@ export function Stage({ progress }: { progress: MotionValue<number> }) {
       perspective.updateProjectionMatrix()
     }
 
+    if (ORB_ZOOM) {
+      const ox = THREE.MathUtils.lerp(a.orb[0], b.orb[0], f)
+      const oy = THREE.MathUtils.lerp(a.orb[1], b.orb[1], f)
+      const oz = THREE.MathUtils.lerp(a.orb[2] + za, b.orb[2] + zb, f)
+      camera.position.set(ox + 0.25, oy + 0.15, oz + 4.6)
+      camera.lookAt(ox, oy, oz)
+      const perspective = camera as THREE.PerspectiveCamera
+      if (perspective.fov !== 40) {
+        perspective.fov = 40
+        perspective.updateProjectionMatrix()
+      }
+    }
+
     if (orbGroup.current) {
+      orbGroup.current.scale.setScalar(live.orbScale)
       const ox = THREE.MathUtils.lerp(a.orb[0], b.orb[0], f)
       const oy = THREE.MathUtils.lerp(a.orb[1], b.orb[1], f)
       const oz = THREE.MathUtils.lerp(a.orb[2] + za, b.orb[2] + zb, f)
@@ -208,8 +233,13 @@ export function Stage({ progress }: { progress: MotionValue<number> }) {
       fill.current.position.set(camera.position.x - 55, camera.position.y + 60, camera.position.z + 85)
       fill.current.target.position.copy(scratch)
       fill.current.target.updateMatrixWorld()
-      fill.current.intensity = 0.85 + live.sunPower * 0.18
+      fill.current.intensity = 1.9 + live.sunPower * 0.22
       fill.current.color.setRGB(live.sun[0], live.sun[1], live.sun[2])
+    }
+
+    if (sky.current) {
+      sky.current.intensity = 0.15 + live.ambientPower * 0.85
+      sky.current.color.setRGB(live.ambient[0], live.ambient[1], live.ambient[2])
     }
 
     fog.color.setRGB(live.fog[0], live.fog[1], live.fog[2])
@@ -253,10 +283,9 @@ export function Stage({ progress }: { progress: MotionValue<number> }) {
 
   return (
     <>
-      <Environment intensity={0.42} />
       <Sky />
       <Stars />
-      <ambientLight intensity={0.42} color="#d6e8ff" />
+      <ambientLight ref={sky} intensity={0.6} color="#d6e8ff" />
       <hemisphereLight args={['#bfe0ff', '#4e5f38', 0.55]} />
       <directionalLight
         ref={sun}
@@ -276,7 +305,7 @@ export function Stage({ progress }: { progress: MotionValue<number> }) {
       <Sets visibleIndex={chapterIndex} art={art} models={models} />
       <group ref={orbGroup} position={[0, 6, 0]} scale={3.1}>
         <Orb streak={true} />
-        <pointLight color="#ffe6b8" intensity={10} distance={60} decay={2} />
+        <pointLight color="#d9e4ff" intensity={12} distance={70} decay={2} />
       </group>
     </>
   )
