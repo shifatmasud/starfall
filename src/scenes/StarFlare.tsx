@@ -33,17 +33,18 @@ void main() {
   if (r > 1.0) discard;
   float breathe = 0.95 + 0.05 * sin(uTime * 1.7);
 
-  vec3 col = vec3(1.0, 0.99, 0.97) * exp(-r * 34.0) * 7.0;
-  col += vec3(0.72, 0.86, 1.0) * exp(-r * 9.0) * 1.05;
-  col += vec3(0.36, 0.58, 1.0) * exp(-r * 3.6) * 0.30;
+  // a warm-white star with a soft four-point bloom, not a hard lens flare
+  vec3 col = vec3(1.0, 0.975, 0.93) * exp(-r * 30.0) * 6.2;
+  col += vec3(0.86, 0.90, 1.0) * exp(-r * 7.0) * 0.85;
+  col += vec3(0.52, 0.66, 0.96) * exp(-r * 3.0) * 0.26;
 
-  float sx = exp(-abs(p.y) * 260.0) * exp(-abs(p.x) * 8.5) * 1.0;
-  float sy = exp(-abs(p.x) * 260.0) * exp(-abs(p.y) * 9.5) * 0.9;
-  float dx = exp(-abs(p.x - p.y) * 190.0) * exp(-length(p) * 12.0) * 0.25;
-  float dy = exp(-abs(p.x + p.y) * 190.0) * exp(-length(p) * 12.0) * 0.25;
-  col += vec3(0.86, 0.93, 1.0) * (sx + sy + dx + dy);
+  float sx = exp(-abs(p.y) * 180.0) * exp(-abs(p.x) * 6.5) * 0.62;
+  float sy = exp(-abs(p.x) * 180.0) * exp(-abs(p.y) * 7.0) * 0.55;
+  float dx = exp(-abs(p.x - p.y) * 150.0) * exp(-length(p) * 11.0) * 0.12;
+  float dy = exp(-abs(p.x + p.y) * 150.0) * exp(-length(p) * 11.0) * 0.12;
+  col += vec3(0.94, 0.96, 1.0) * (sx + sy + dx + dy);
 
-  col *= 1.0 - smoothstep(0.45, 1.0, r);
+  col *= 1.0 - smoothstep(0.38, 1.0, r);
   fragColor = vec4(col * breathe, 1.0);
 }
 `
@@ -107,7 +108,7 @@ export function StarFlare({ layout }: { layout: Layout }) {
     () => ({
       uTime: { value: 0 },
       uTint: { value: new THREE.Color('#fff0d0') },
-      uGain: { value: 0.40 },
+      uGain: { value: 0.50 },
     }),
     [],
   )
@@ -123,7 +124,7 @@ export function StarFlare({ layout }: { layout: Layout }) {
       <Quad position={[layout.star.x, layout.star.y, 0.4]} size={0.34} fragment={FLARE_FRAG} uniforms={star} />
       <Quad
         position={[layout.orb.x + layout.orb.r * 0.18, layout.orb.y + layout.orb.r * 0.1, -0.02]}
-        size={layout.orb.r * 2.2}
+        size={layout.orb.r * 3.4}
         fragment={HALO_FRAG}
         uniforms={halo}
       />

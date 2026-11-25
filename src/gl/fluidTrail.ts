@@ -197,6 +197,10 @@ export class FluidTrail {
   private px = new THREE.Vector2(-1, -1)
   private moved = false
   private started = false
+  /** a pointer is down / the hand is on the glass; cleared by `release()` */
+  private hasPointer = false
+  /** the next move is the first one of a stroke: it snaps the brush instead of drawing */
+  private fresh = false
   private width = 1
   private height = 1
 
@@ -349,6 +353,10 @@ export class FluidTrail {
   pointer(x: number, y: number) {
     this.pending.set(x, y)
     this.moved = true
+    if (!this.hasPointer) {
+      this.hasPointer = true
+      this.fresh = true
+    }
   }
 
   /** The hand left: the next touch starts a fresh stroke. */
@@ -356,6 +364,9 @@ export class FluidTrail {
     this.px.set(-1, -1)
     this.prevPx.set(-1, -1)
     this.started = false
+    this.hasPointer = false
+    this.fresh = false
+    this.vel.set(0, 0)
   }
 
   clear() {
@@ -365,6 +376,8 @@ export class FluidTrail {
     this.px.set(-1, -1)
     this.prevPx.set(-1, -1)
     this.started = false
+    this.hasPointer = false
+    this.fresh = false
     this.live = false
     this.awake = 0
   }
@@ -381,17 +394,26 @@ export class FluidTrail {
     this.curr = swap
     u.u_prevPaintTexture.value = this.prev.texture
 
-    // 2) pointer → paint px
+    // 2) pointer → paint px. The first event of a stroke snaps both ends of the brush onto the
+    //    live position: nothing is painted between there and wherever the last stroke (or the
+    //    field's origin) happened to be.
     const wasMoved = this.moved
     this.moved = false
     if (wasMoved) {
       this.prevPx.copy(this.px)
       this.px.copy(this.pending)
     }
+    const snap = wasMoved && this.fresh
+    if (snap) {
+      this.fresh = false
+      // no distance, no velocity: this frame establishes the brush, it does not drag it
+      this.prevPx.copy(this.px)
+      this.vel.set(0, 0)
+    }
 
     // 3) radius from speed: fit(distance, 0..100, 0..maxRadius)
     let radius = 0
-    if (this.px.x >= 0) {
+    if (this.px.x >= 0 && this.prevPx.x >= 0 && !snap) {
       const d = Math.hypot(this.px.x - this.prevPx.x, this.px.y - this.prevPx.y)
       radius = (this.maxRadius * Math.min(1, d / this.radiusDistanceRange))
     }
@@ -403,7 +425,7 @@ export class FluidTrail {
     const mx = (this.px.x / this.width) * 2 - 1
     const my = 1 - (this.px.y / this.height) * 2
     this.to.set(((mx + 1) * pw) / 2, ((my + 1) * ph) / 2, radius, 1)
-    if (!this.started) {
+    if (!this.started || snap) {
       this.from.copy(this.to)
       this.started = true
     }

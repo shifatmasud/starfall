@@ -86,13 +86,23 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `
 
-/** SurfacePaintDistortion: the smear and the wake fringe, on the display-encoded frame. */
+/**
+ * The fluid trail's refraction (surface-tension's ScreenPaintDistortion slot, order 75).
+ *
+ * The field is a liquid surface over the finished frame: where it is at rest nothing is touched, and
+ * where the brush has passed the surface tilts, so the whole picture behind it — stars, Earth, the
+ * orb, the rocks — bends through it. The tilt is read from the field's own gradient: the frame is
+ * displaced along the slope, each channel by a slightly different amount, so the wake carries a crisp
+ * chromatic fringe on its edge; the brush velocity drags the image a touch further, the crest catches
+ * a thin silver highlight, and the frame outside the wake is returned exactly as it arrived.
+ */
 const DistortShader = /* glsl */ `
 uniform sampler2D tTrail;
 uniform vec2 uTrailTexel;
+uniform vec2 uBead;
+uniform float uAspect;
+uniform float uZoom;
 uniform float uTrailAmount;
-uniform float uTrailMultiplier;
-uniform float uTrailColorMultiplier;
 uniform float uTrailShade;
 uniform float uTrailRGBShift;
 ${SRGB_GLSL}
@@ -100,33 +110,59 @@ ${SRGB_GLSL}
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec2 bn = vec2(bnoise(gl_FragCoord.xy + 17.0), bnoise(gl_FragCoord.xy + 29.0));
 
-  // the field arrives pre-reconstructed at 2×: one plain tap, plus the reference's blue-noise dither
+  // the field arrives pre-reconstructed at 2x: one plain tap, plus the reference's blue-noise dither
   vec4 data = texture(tTrail, uv);
   data += (vec4(bn.yx, bn.xy) - 0.5) * (1.0 / 255.0);
   float weight = (data.z + data.w) * 0.5;
 
-  if (weight < 0.002) {
-    // nothing painted here: the untouched frame, and its alpha marks it as untouched
-    outputColor = vec4(clamp(inputColor.rgb, 0.0, 1.0), inputColor.a);
+  if (weight < 0.0025) {
+    // nothing painted here: the frame is untouched, to the pixel
+    outputColor = vec4(inputColor.rgb, inputColor.a);
     return;
   }
 
-  vec2 vel = (0.5 - data.xy - 0.001) * 2.0 * weight;
-  vec2 stepUv = vel * uTrailAmount / 4.0 * uTrailTexel * uTrailMultiplier;
-  vec2 p = uv + bn * stepUv;                       // jittered first tap kills banding
-  vec3 acc = vec3(0.0);
-  for (int i = 0; i < 9; i++) {
-    acc += min(texture(inputBuffer, p).rgb, vec3(1.0));
-    p += stepUv;
-  }
-  acc /= 9.0;
+  // the surface's tilt under this pixel: the weight field's slope, in field texels
+  vec2 tx = uTrailTexel * 2.0;
+  float wl = texture(tTrail, uv - vec2(tx.x, 0.0)).z;
+  float wr = texture(tTrail, uv + vec2(tx.x, 0.0)).z;
+  float wd = texture(tTrail, uv - vec2(0.0, tx.y)).z;
+  float wu = texture(tTrail, uv + vec2(0.0, tx.y)).z;
+  vec2 slope = vec2(wr - wl, wu - wd);
+  float tilt = length(slope);
 
-  // the wake fringe: strongest where the paint is thin, gone above 0.4
-  acc += sin(vec3(vel.x + vel.y) * 40.0 + vec3(0.0, 2.0, 4.0) * uTrailRGBShift)
-       * (1.0 - smoothstep(-0.9, 0.4, weight))
-       * uTrailShade * max(abs(vel.x), abs(vel.y)) * uTrailColorMultiplier;
+  // the bead: the liquid under the finger is a lens, so the picture inside the wake magnifies and
+  // slides toward it, strongest where the paint is thickest
+  vec2 toBead = (uv - uBead) * vec2(uAspect, 1.0);
+  float beadR = length(toBead);
+  float bead = weight * smoothstep(0.13, 0.02, beadR);
 
-  outputColor = vec4(clamp(acc, 0.0, 1.0), inputColor.a * 0.997);
+  // the lens: magnify inside the bead and bend the frame down the slope at its edge, scaled by the
+  // weight so the image matches the liquid it crosses
+  vec2 off = -toBead * bead * uZoom - slope * uTrailAmount * weight;
+  // the bead's own lens is a gentle swell; the refraction lives on the wake's edges
+  // a short, liquid bend rather than a tear
+  float ol = length(off);
+  if (ol > 0.008) off *= 0.008 / ol;
+  float edge = smoothstep(0.006, 0.10, tilt);
+  float dispersion = uTrailRGBShift * (0.02 + 0.95 * edge);
+
+  vec3 col;
+  col.r = texture(inputBuffer, uv + off * (1.0 + dispersion)).r;
+  col.g = texture(inputBuffer, uv + off).g;
+  col.b = texture(inputBuffer, uv + off * (1.0 - dispersion)).b;
+
+  // liquid glass: a thin silver crest where the surface is steepest, a cool sheen inside the bead,
+  // and the faint pastel fringe the reference's wake carries where the film is thinnest
+  float crest = smoothstep(0.004, 0.07, tilt) * weight;
+  col += vec3(0.74, 0.84, 1.0) * crest * 0.16 * uTrailShade;
+  col += vec3(0.60, 0.74, 1.0) * bead * 0.055 * uTrailShade;
+  col += vec3(0.86, 0.90, 1.0) * weight * 0.015 * uTrailShade;
+  float film = weight * 1.4 + (data.x - data.y) * 0.9 + slope.x * 3.0;
+  vec3 iridescence = 0.5 + 0.5 * cos(6.28318 * (film + vec3(0.0, 0.33, 0.67)));
+  float thinFilm = smoothstep(0.03, 0.12, weight) * (1.0 - smoothstep(0.32, 0.66, weight));
+  col += (iridescence - 0.5) * thinFilm * 0.02 * uTrailShade;
+
+  outputColor = vec4(clamp(col, 0.0, 1.0), inputColor.a);
 }
 `
 
@@ -150,11 +186,12 @@ class DistortEffect extends Effect {
       uniforms: new Map<string, THREE.Uniform>([
         ['tTrail', new THREE.Uniform(trail)],
         ['uTrailTexel', new THREE.Uniform(texel.clone())],
-        ['uTrailAmount', new THREE.Uniform(3)],
-        ['uTrailMultiplier', new THREE.Uniform(5)],
-        ['uTrailColorMultiplier', new THREE.Uniform(10)],
-        ['uTrailShade', new THREE.Uniform(1.25)],
-        ['uTrailRGBShift', new THREE.Uniform(0.5)],
+        ['uBead', new THREE.Uniform(new THREE.Vector2(0.5, 0.5))],
+        ['uAspect', new THREE.Uniform(1.6)],
+        ['uZoom', new THREE.Uniform(0.22)],
+        ['uTrailAmount', new THREE.Uniform(0.18)],
+        ['uTrailShade', new THREE.Uniform(1.0)],
+        ['uTrailRGBShift', new THREE.Uniform(0.30)],
       ]),
     })
   }
@@ -167,6 +204,9 @@ export type PostFXProps = {
 
 /** The live cursor-trail field, so the app's pointer listeners can paint it. */
 export const trailRef: { current: FluidTrail | null } = { current: null }
+
+/** the last point of contact, in CSS pixels: the centre of the liquid bead */
+const bead = { x: 0.5, y: 0.5 }
 
 export function PostFX({ bloom = 0.62, exposure = 1.06 }: PostFXProps) {
   const gl = useThree((state) => state.gl)
@@ -184,27 +224,53 @@ export function PostFX({ bloom = 0.62, exposure = 1.06 }: PostFXProps) {
   }, [trail])
 
   // The brush. Pointer events cover mouse and pen; the finger is read from touch events as well,
-  // because a pointer stream stops the moment the page starts a native scroll.
+  // because a pointer stream stops the moment the page starts a native scroll. A stroke opens on
+  // down and closes on up/leave, so the next contact snaps to the live finger instead of dragging
+  // a line back from where the last one ended.
   useEffect(() => {
-    const feed = (x: number, y: number) => trail.pointer(x, y)
+    const feed = (x: number, y: number) => {
+      bead.x = x
+      bead.y = y
+      trail.pointer(x, y)
+    }
     const onPointer = (event: PointerEvent) => {
       if (event.pointerType === 'touch') return
       feed(event.clientX, event.clientY)
+    }
+    const onPointerEnd = () => {
+      trail.release()
     }
     const onTouch = (event: TouchEvent) => {
       const touch = event.changedTouches[0] || event.touches[0]
       if (touch) feed(touch.clientX, touch.clientY)
     }
-    const leave = () => trail.release()
+    const onTouchStart = (event: TouchEvent) => {
+      onTouch(event)
+    }
+    const onTouchEnd = () => {
+      trail.release()
+    }
     window.addEventListener('pointermove', onPointer, { passive: true })
-    window.addEventListener('touchstart', onTouch, { passive: true })
+    window.addEventListener('pointerdown', onPointer, { passive: true })
+    window.addEventListener('pointerup', onPointerEnd)
+    window.addEventListener('pointercancel', onPointerEnd)
+    window.addEventListener('pointerleave', onPointerEnd)
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
     window.addEventListener('touchmove', onTouch, { passive: true })
-    window.addEventListener('pointerleave', leave)
+    window.addEventListener('touchend', onTouchEnd)
+    window.addEventListener('touchcancel', onTouchEnd)
+    window.addEventListener('blur', onPointerEnd)
     return () => {
       window.removeEventListener('pointermove', onPointer)
-      window.removeEventListener('touchstart', onTouch)
+      window.removeEventListener('pointerdown', onPointer)
+      window.removeEventListener('pointerup', onPointerEnd)
+      window.removeEventListener('pointercancel', onPointerEnd)
+      window.removeEventListener('pointerleave', onPointerEnd)
+      window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouch)
-      window.removeEventListener('pointerleave', leave)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
+      window.removeEventListener('blur', onPointerEnd)
     }
   }, [trail])
 
@@ -253,6 +319,8 @@ export function PostFX({ bloom = 0.62, exposure = 1.06 }: PostFXProps) {
     const d = composer.distort.uniforms
     d.get('tTrail')!.value = trail.texture
     ;(d.get('uTrailTexel')!.value as THREE.Vector2).copy(trail.texelSize)
+    ;(d.get('uBead')!.value as THREE.Vector2).set(bead.x / size.width, 1 - bead.y / size.height)
+    d.get('uAspect')!.value = size.width / Math.max(1, size.height)
     const t = composer.final.uniforms.get('uTime')
     if (t) t.value = state.clock.elapsedTime
     composer.comp.render(delta)
