@@ -1,8 +1,0 @@
-node_modules/
-dist/
-artifacts/
-*.local
-.DS_Store
-.vercel
-playwright-report/
-test-results/
