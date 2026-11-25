@@ -1,17 +1,19 @@
 import { useEffect } from 'react'
 import type { JSX } from 'react'
 import { Scene1Space } from './scenes/Scene1Space'
+import { Scene2Clouds } from './scenes/Scene2Clouds'
 
 /**
  * The app is the picture. `?scene=1..8` mounts exactly one scene, full-bleed, with no interface at
  * all: no header, no chapter copy, no progress, no sound controls, no footer. The only interaction
  * is the pointer's fluid trail, which lives in the post chain.
  *
- * Scenes 2–8 are not rebuilt yet and answer with an empty sky rather than a blank screen.
+ * Scenes 3–8 are not built yet and answer with an empty sky rather than a blank screen.
  */
 
 const SCENES: Record<number, () => JSX.Element> = {
   1: Scene1Space,
+  2: Scene2Clouds,
 }
 
 export default function App({ scene = 1 }: { scene?: number }) {

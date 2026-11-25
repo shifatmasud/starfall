@@ -17,6 +17,10 @@ export type Layout = {
   orb: { x: number; y: number; r: number }
   star: { x: number; y: number }
   earth: { cx: number; cy: number; r: number }
+  /** scene 2: the morning sun in screen uv (0..1 of the frame, y down) */
+  sun: { x: number; y: number }
+  /** scene 2: the orb diving through the cloud sea, in the same units as `orb` */
+  dive: { x: number; y: number; r: number }
 }
 
 export function layoutFor(width: number, height: number): Layout {
@@ -36,10 +40,16 @@ export function layoutFor(width: number, height: number): Layout {
     orb: {
       x: 0,
       y: lerp(0.30, 0.182, t),
-      r: lerp(0.138, 0.243, t),
+      r: lerp(0.132, 0.214, t),
     },
     star: { x: lerp(0.30, 0.914, t), y: lerp(0.74, 0.818, t) },
     earth: { cx, cy: crest - r, r },
+    sun: { x: lerp(0.50, 0.455, t), y: lerp(0.17, 0.115, t) },
+    dive: {
+      x: lerp(-0.06, 0.26, t),
+      y: lerp(0.02, -0.06, t),
+      r: lerp(0.088, 0.098, t),
+    },
   }
 }
 

@@ -60,12 +60,12 @@ float fbm(vec2 p) {
 
 /** what the glass sees: dark space, the Earth's blue low down, the star's light above right */
 vec3 backdrop(vec3 dir) {
-  float down = smoothstep(0.10, -0.55, dir.y);
-  vec3 col = mix(vec3(0.020, 0.030, 0.058), vec3(0.012, 0.028, 0.062), down);
-  col += vec3(0.16, 0.36, 0.78) * pow(down, 1.7) * 1.15;
+  float down = 1.0 - smoothstep(-0.55, 0.10, dir.y);
+  vec3 col = mix(vec3(0.016, 0.026, 0.056), vec3(0.010, 0.026, 0.064), down);
+  col += vec3(0.16, 0.36, 0.80) * pow(down, 1.7) * 1.05;
   float s = max(dot(dir, normalize(vec3(0.80, 0.62, 0.20))), 0.0);
-  col += vec3(1.0, 0.90, 0.76) * pow(s, 26.0) * 2.6;
-  col += vec3(0.55, 0.70, 1.0) * pow(s, 4.0) * 0.10;
+  col += vec3(1.0, 0.90, 0.76) * pow(s, 22.0) * 2.2;
+  col += vec3(0.55, 0.70, 1.0) * pow(s, 4.0) * 0.08;
   return col;
 }
 
@@ -73,50 +73,62 @@ void main() {
   vec3 N = normalize(vN);
   vec3 V = normalize(vV);
   float ndv = clamp(dot(N, V), 0.0, 1.0);
-  float fres = pow(1.0 - ndv, 2.6);
+  float fres = pow(1.0 - ndv, 3.0);
   vec3 L = normalize(uSun);
+  float sunSide = smoothstep(-0.45, 0.85, dot(N, L));
 
-  // the interior: space bent through the shell, and the shell's own film
-  vec3 refr = refract(-V, N, 1.0 / 1.52);
+  // the interior: space bent through clear crystal, never a painted pearl
+  vec3 refr = refract(-V, N, 1.0 / 1.62);
   vec3 inside = backdrop(refr);
 
-  vec2 lp = vec2(vObj.x * 2.0 + vObj.z * 0.6, vObj.y * 2.4 + vObj.z * 1.1);
-  float swirl = fbm(lp * 1.6 + vec2(uTime * 0.020, -uTime * 0.014));
-  float swirl2 = fbm(lp * 3.4 - vec2(uTime * 0.030, uTime * 0.010));
+  // sunlit cloud caught inside the glass: fine horizontal amber/ice strata drifting slowly
+  vec2 lp = vec2(vObj.x * 1.7 + vObj.z * 0.35, vObj.y * 6.0 + vObj.z * 0.6);
+  float band1 = fbm(lp + vec2(uTime * 0.018, uTime * 0.011));
+  float band2 = fbm(lp * 2.3 + vec2(-uTime * 0.024, uTime * 0.006));
+  // the bands are caught cloud in the glass: soft masses, never ruled lines
+  float strata = smoothstep(0.44, 0.80, band1 * 0.72 + band2 * 0.28);
+  // the bands gather across the middle of the ball and thin out toward its poles
+  strata *= 0.30 + 0.70 * smoothstep(0.95, 0.05, abs(vObj.y));
+  float swirl = smoothstep(0.45, 0.80, fbm(lp * 1.4 + vec2(uTime * 0.020, -uTime * 0.014)));
 
-  // the sunward half of the glass runs warm gold, the far half stays cold and see-through
-  float sunSide = smoothstep(-0.35, 0.85, dot(N, L));
-  vec3 film = mix(vec3(0.55, 0.76, 1.0), vec3(1.0, 0.78, 0.42), sunSide * 0.85 + swirl * 0.15);
+  vec3 amber = vec3(1.0, 0.66, 0.30);
+  vec3 ice = vec3(0.60, 0.80, 1.0);
 
-  vec3 col = inside * (0.65 + 0.45 * sunSide);
-  col += vec3(0.07, 0.10, 0.16) * (0.30 + 0.70 * swirl);
-  col += film * (0.14 + 0.55 * fres) * (0.50 + 1.15 * swirl);
-  col += vec3(1.0, 0.74, 0.38) * smoothstep(0.60, 0.95, swirl2) * (0.12 + 0.50 * fres) * (0.35 + 0.65 * sunSide);
+  // clear body: the sky behind survives, cooled a little, warmed on the sun side
+  vec3 col = inside * (1.05 + 0.40 * sunSide);
+  col += ice * 0.075 * (0.35 + fres);
+  // the golden refracted strata — the plate's warm streaks, hottest where the light enters
+  col += vec3(1.0, 0.82, 0.44) * strata * (1.25 + 1.85 * sunSide) * (0.45 + 0.85 * fres);
+  col += vec3(1.0, 0.86, 0.58) * swirl * (0.30 + 0.70 * sunSide) * 0.42;
 
-  // the star at the centre, burning through the glass
-  float core = pow(clamp(dot(-N, normalize(vec3(0.10, 0.02, 1.0))), 0.0, 1.0), 6.0);
-  col += vec3(1.0, 0.86, 0.64) * core * 1.45;
-  col += vec3(1.0, 0.97, 0.90) * pow(core, 4.0) * (1.5 + 1.2 * sunSide);
+  // the star at the heart of the crystal: a broad golden fire with a white-hot centre, big enough
+  // to read as the light source the whole ball is lit by
+  float coreD = clamp(dot(-N, normalize(vec3(0.30, 0.05, 0.95))), 0.0, 1.0);
+  col += vec3(1.0, 0.74, 0.42) * pow(coreD, 1.2) * 1.25;
+  col += vec3(1.0, 0.84, 0.58) * pow(coreD, 2.6) * 1.90;
+  col += vec3(1.0, 0.94, 0.80) * pow(coreD, 6.0) * 1.60;
+  col += vec3(1.0, 0.99, 0.97) * pow(coreD, 18.0) * 1.10;
+  // the glass itself holds the light: a soft core down the middle, never a dark marble
+  col += vec3(1.0, 0.84, 0.60) * pow(ndv, 2.4) * 0.55;
+  // and a thin caustic line where the crystal's edge bends the star's light
+  float caustic = pow(1.0 - abs(vObj.x * 1.15 + vObj.y * 0.35 - 0.05), 26.0);
+  col += vec3(1.0, 0.94, 0.84) * caustic * 0.35 * (0.4 + 0.6 * sunSide);
 
-  // the shell: a hard white crest all round, hottest on the sun side
-  float rim = pow(1.0 - ndv, 9.0);
+  // the shell: one thin bright line, white where it faces the star and cool elsewhere
+  float rim = pow(1.0 - ndv, 7.5);
   vec3 H = normalize(L + V);
-  float spec = pow(max(dot(N, H), 0.0), 620.0);
-  float lit = smoothstep(-0.35, 0.9, dot(N, L));
-  col += vec3(0.94, 0.98, 1.0) * rim * (0.55 + 2.0 * lit);
-  col += vec3(1.0, 0.99, 0.96) * spec * 9.0;
-  col += vec3(1.0, 0.92, 0.80) * pow(max(dot(N, H), 0.0), 70.0) * 0.45 * sunSide;
+  float spec = pow(max(dot(N, H), 0.0), 900.0);
+  float lit = smoothstep(-0.45, 0.95, dot(N, L));
+  col += mix(ice, vec3(1.0, 0.92, 0.78), lit) * rim * (0.85 + 2.30 * lit);
+  col += vec3(1.0, 0.99, 0.96) * spec * 13.0;
+  col += vec3(1.0, 0.90, 0.74) * pow(max(dot(N, H), 0.0), 120.0) * 0.35 * sunSide;
 
-  // the ring's reflection: a second, softer crest just inside the silhouette
-  float shell = smoothstep(0.30, 0.42, ndv) * smoothstep(0.56, 0.44, ndv);
-  col += vec3(0.86, 0.93, 1.0) * shell * (0.10 + 0.22 * lit);
+  // a warm bloom off the sunward shoulder, as on the plate
+  float shoulder = smoothstep(0.15, 1.0, dot(N, normalize(vec3(1.0, 0.16, 0.30)))) * pow(1.0 - ndv, 1.4);
+  col += vec3(1.0, 0.80, 0.56) * shoulder * 0.60;
 
-  // a warm bloom off the ball's sunward shoulder, as on the plate
-  float shoulder = smoothstep(0.0, 0.95, dot(N, normalize(vec3(1.0, 0.18, 0.32)))) * pow(1.0 - ndv, 1.6);
-  col += vec3(1.0, 0.84, 0.64) * shoulder * 0.50;
-
-  // the shell is glass, not paint: the sky behind it must survive
-  float alpha = clamp(0.42 + 0.45 * fres + 0.55 * spec + 0.35 * rim, 0.35, 1.0);
+  // glass, not paint: transparent in the middle, gathering at the silhouette
+  float alpha = clamp(0.14 + 0.52 * fres + 0.55 * rim + 0.45 * spec + 0.28 * strata * sunSide, 0.12, 1.0);
   fragColor = vec4(col, alpha);
 }
 `
@@ -139,19 +151,27 @@ in vec2 vLocal;
 uniform float uOpacity;
 uniform float uBand;
 uniform float uWidth;
+uniform float uOrbR;
 uniform vec3 uTint;
 layout(location = 0) out vec4 fragColor;
 void main() {
-  // a gaussian band rather than a tube: a one-pixel line at any resolution, with a soft glow
+  // a gaussian band rather than a tube: a smooth line at any resolution, with a soft glow
   float rr = length(vLocal);
   float x = (rr - uBand) / uWidth;
   float band = exp(-x * x);
-  float core = exp(-x * x * 9.0);
-  fragColor = vec4(uTint * (band * 0.55 + core * 0.85) * uOpacity, 1.0);
+  float core = exp(-x * x * 8.0);
+  // the near arc crosses the ball in front and the star's light catches it there; the far arc is
+  // hidden behind the glass, so it fades out exactly over the ball's silhouette
+  float near = smoothstep(-0.10 * uBand, 0.35 * uBand, vLocal.y);
+  float overBall = near * (1.0 - smoothstep(uOrbR * 0.88, uOrbR * 1.02, abs(vLocal.x)));
+  float behindBall = (1.0 - near) * (1.0 - smoothstep(uOrbR * 0.96, uOrbR * 1.10, length(vLocal / vec2(1.0, 0.62))));
+  vec3 tint = mix(uTint, vec3(1.0, 0.93, 0.82), overBall * 0.8);
+  float gain = (0.55 + 1.15 * overBall) * (1.0 - behindBall * 0.92);
+  fragColor = vec4(tint * (band * 0.55 + core * 0.95) * uOpacity * gain, 1.0);
 }
 `
 
-export function CrystalStarOrb({ layout }: { layout: Layout }) {
+export function CrystalStarOrb({ layout, showSpaceRings = true }: { layout: Layout; showSpaceRings?: boolean }) {
   const orb = useRef<THREE.Mesh>(null)
   const rings = useRef<THREE.Group>(null)
   const time = useRef(0)
@@ -186,6 +206,7 @@ export function CrystalStarOrb({ layout }: { layout: Layout }) {
               uOpacity: { value: o },
               uBand: { value: 1 },
               uWidth: { value: 0.012 },
+              uOrbR: { value: 1 },
               uTint: { value: new THREE.Color(o > 0.8 ? '#ffffff' : '#cfe4ff') },
             },
             transparent: false,
@@ -218,19 +239,20 @@ export function CrystalStarOrb({ layout }: { layout: Layout }) {
   return (
     <group position={[x, y, 0]}>
       {/* the ring system, tilted so the near arc crosses the ball's lower third */}
-      <group ref={rings} rotation={[1.36, 0, -0.20]}>
+      <group ref={rings} visible={showSpaceRings} rotation={[1.12, 0, -0.24]}>
         {[
-          { radius: 2.72, width: 0.040, mat: 0 },
-          { radius: 3.12, width: 0.032, mat: 1 },
-          { radius: 3.54, width: 0.026, mat: 2 },
+          { radius: 1.52, width: 0.075, mat: 0 },
+          { radius: 1.74, width: 0.060, mat: 1 },
+          { radius: 1.98, width: 0.048, mat: 2 },
         ].map((ring, i) => {
-          const band = ring.radius * r * (layout.mobile ? 0.62 : 1)
+          const band = ring.radius * r * (layout.mobile ? 0.74 : 1)
           const material = ringMaterials[ring.mat]
           material.uniforms.uBand.value = band
           material.uniforms.uWidth.value = ring.width * r
+          material.uniforms.uOrbR.value = r
           return (
             <mesh key={i} material={material} renderOrder={30}>
-              <ringGeometry args={[band * (1 - ring.width * 3.0), band * (1 + ring.width * 3.0), 720, 1]} />
+              <planeGeometry args={[band * 2.7, band * 2.7]} />
             </mesh>
           )
         })}
