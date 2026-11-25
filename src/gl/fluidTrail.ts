@@ -204,13 +204,15 @@ export class FluidTrail {
   private width = 1
   private height = 1
 
-  constructor(renderer: THREE.WebGLRenderer) {
+  constructor(renderer: THREE.WebGLRenderer, halfFloat = false) {
     this.renderer = renderer
     this.prev = target(1, 1)
     this.curr = target(1, 1)
     this.low = target(1, 1)
     this.lowBlur = target(1, 1)
-    this.disp = target(2, 2, true)
+    // the reconstructed display field wants more than 8 bits; a phone that cannot render into
+    // RGBA16F gets the 8-bit field instead of a permanently incomplete framebuffer
+    this.disp = target(2, 2, halfFloat)
 
     this.paintMat = new THREE.ShaderMaterial({
       glslVersion: THREE.GLSL3,

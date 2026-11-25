@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -12,6 +12,22 @@ import react from '@vitejs/plugin-react'
  * means the art travels intact and the build produces the real files. Delete the `.b64` copies and
  * commit the `.glb`s directly the day a binary path is available.
  */
+/** Decode every `*.b64` under public/ into the file it stands for (textures, stills, models). */
+function decodeAssets(dir = fileURLToPath(new URL('./public/', import.meta.url))): void {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = `${dir}${entry.name}`
+    if (entry.isDirectory()) {
+      decodeAssets(`${path}/`)
+      continue
+    }
+    if (!entry.name.endsWith('.b64')) continue
+    const bytes = Buffer.from(readFileSync(path, 'utf8').replace(/\s+/g, ''), 'base64')
+    writeFileSync(path.slice(0, -4), bytes)
+  }
+}
+
+decodeAssets()
+
 function decodeModels(): void {
   const dir = fileURLToPath(new URL('./public/models/', import.meta.url))
   for (const name of ['moon_rock_01', 'moon_rock_03', 'moon_rock_05']) {

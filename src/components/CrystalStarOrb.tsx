@@ -32,6 +32,7 @@ in vec3 vV;
 in vec3 vObj;
 uniform float uTime;
 uniform vec3 uSun;
+uniform float uSky;
 layout(location = 0) out vec4 fragColor;
 
 float h21(vec2 p) {
@@ -129,6 +130,18 @@ void main() {
 
   // glass, not paint: transparent in the middle, gathering at the silhouette
   float alpha = clamp(0.14 + 0.52 * fres + 0.55 * rim + 0.45 * spec + 0.28 * strata * sunSide, 0.12, 1.0);
+
+  if (uSky > 0.5) {
+    // a star seen in daylight: white-hot heart, warm gold body, a cool cut rim. None of the dark
+    // space the glass refracts in the first scene belongs here, so this is its own simple body.
+    vec3 day = mix(vec3(0.90, 0.94, 1.0), vec3(1.0, 0.96, 0.90), smoothstep(0.0, 0.9, coreD));
+    day = mix(day, vec3(1.0, 0.86, 0.62), pow(coreD, 3.0) * 0.55);
+    day += vec3(1.0, 0.99, 0.96) * pow(coreD, 12.0) * 1.30;
+    day = mix(day, vec3(0.72, 0.84, 1.0), smoothstep(0.80, 1.0, fres) * 0.85);
+    fragColor = vec4(day, 1.0);
+    return;
+  }
+
   fragColor = vec4(col, alpha);
 }
 `
@@ -171,7 +184,16 @@ void main() {
 }
 `
 
-export function CrystalStarOrb({ layout, showSpaceRings = true }: { layout: Layout; showSpaceRings?: boolean }) {
+export function CrystalStarOrb({
+  layout,
+  showSpaceRings = true,
+  sky = false,
+}: {
+  layout: Layout
+  showSpaceRings?: boolean
+  /** a bright daylight body instead of the space-glass one */
+  sky?: boolean
+}) {
   const orb = useRef<THREE.Mesh>(null)
   const rings = useRef<THREE.Group>(null)
   const time = useRef(0)
@@ -185,13 +207,14 @@ export function CrystalStarOrb({ layout, showSpaceRings = true }: { layout: Layo
         uniforms: {
           uTime: { value: 0 },
           uSun: { value: new THREE.Vector3(0.62, 0.72, 0.34).normalize() },
+          uSky: { value: sky ? 1 : 0 },
         },
         transparent: true,
         depthWrite: false,
         depthTest: true,
         side: THREE.FrontSide,
       }),
-    [],
+    [sky],
   )
 
   const ringMaterials = useMemo(

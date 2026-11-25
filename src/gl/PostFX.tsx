@@ -11,6 +11,7 @@ import {
   SMAAEffect,
 } from 'postprocessing'
 import { FluidTrail } from './fluidTrail'
+import { caps } from './capabilities'
 
 /**
  * The post chain, in Lusion's order (handbook ch.8): Bloom (10) → Final grade / ACES (30) →
@@ -19,8 +20,8 @@ import { FluidTrail } from './fluidTrail'
  *   1. the scene is drawn into a half-float buffer
  *   2. bloom, thresholded at display white, so only the star's core, the orb's crest and the
  *      atmosphere's edge halo
- *   3. the final grade: exposure, ACES filmic, split tone, a lens vignette, a 1/255 dither — this is
- *      the frame that leaves the renderer, display-encoded
+ *   3. the final grade: exposure, a filmic shoulder, split tone, a lens vignette, a 1/255 dither —
+ *      the picture, in the display space every shader in the project authors in
  *   4. the pointer trail's distortion (surface-tension's ScreenPaintDistortion, ported as an Effect):
  *      the 8-bit field is blue-noise dithered, the frame is smeared along the paint velocity in nine
  *      jittered taps, and the wake carries the reference's phase-shifted sine fringe
@@ -59,30 +60,50 @@ float bnoise(vec2 p) {
 }
 `
 
-/** Lusion's Final pass: exposure, ACES, grade, vignette, dither. */
+/**
+ * The final pass: exposure, a filmic shoulder, the grade, a vignette and a dither — authored in the
+ * same space the picture is drawn in.
+ *
+ * Every shader in this project writes display-referred colour: the value 0.5 *is* middle grey on the
+ * screen. So this pass grades that colour and rolls its highlights off instead of clipping them, and
+ * it writes the inverse of the transfer function three applies on the way to the canvas, so that the
+ * frame that is graded here is the frame that arrives — one conversion, not two. (Before this, the
+ * whole picture was lifted and saturated by an extra encode, which is why the plate's deep blues came
+ * out as cyan and the clouds' violet shadows came out grey.)
+ */
 const FinalShader = /* glsl */ `
 uniform float uExposure;
 uniform float uGrade;
 uniform float uTime;
 ${SRGB_GLSL}
 
+/** identity through the middle, an exponential shoulder into white, so nothing clips flat */
+vec3 shoulder(vec3 c) {
+  const float knee = 0.78;
+  vec3 over = max(c - knee, 0.0);
+  vec3 rolled = knee + (1.0 - exp(-over * 3.4)) * (1.0 - knee);
+  return mix(c, rolled, step(knee, c));
+}
+
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  vec3 lin = srgbToLinear(inputColor.rgb);
-  vec3 mapped = acesFilm(lin * uExposure);
-  vec3 col = linearToSrgb(mapped);
+  vec3 col = max(inputColor.rgb, 0.0) * uExposure;
+  col = shoulder(col);
 
   float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(vec3(lum), col, mix(1.0, 1.10, uGrade));
-  col = (col - 0.5) * mix(1.0, 1.06, uGrade) + 0.5;
-  col += vec3(-0.012, -0.003, 0.020) * (1.0 - smoothstep(0.05, 0.55, lum)) * uGrade;
-  col += vec3(0.018, 0.010, -0.014) * smoothstep(0.45, 1.0, lum) * uGrade;
+  col = mix(vec3(lum), col, mix(1.0, 1.14, uGrade));
+  col = (col - 0.5) * mix(1.0, 1.05, uGrade) + 0.5;
+  // cool the shadows a breath, warm the highlights: the plate's own split
+  col += vec3(-0.010, -0.004, 0.016) * (1.0 - smoothstep(0.06, 0.48, lum)) * uGrade;
+  col += vec3(0.014, 0.006, -0.010) * smoothstep(0.50, 0.95, lum) * uGrade;
 
   vec2 lens = uv - 0.5;
-  col *= 1.0 - dot(lens, lens) * mix(0.0, 0.42, uGrade);
+  col *= 1.0 - dot(lens, lens) * mix(0.0, 0.30, uGrade);
 
   col = clamp(col, 0.0, 1.0);
   col += (bnoise(gl_FragCoord.xy + uTime) - 0.5) / 255.0;
-  outputColor = vec4(col, inputColor.a);
+
+  // three encodes the frame once on its way to the canvas; this is the inverse, so the sum is one
+  outputColor = vec4(srgbToLinear(clamp(col, 0.0, 1.0)), inputColor.a);
 }
 `
 
@@ -213,8 +234,9 @@ export function PostFX({ bloom = 0.62, exposure = 1.06 }: PostFXProps) {
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera as THREE.PerspectiveCamera)
   const size = useThree((state) => state.size)
+  const device = useMemo(() => caps(), [])
 
-  const trail = useMemo(() => new FluidTrail(gl), [gl])
+  const trail = useMemo(() => new FluidTrail(gl, device.halfFloat && !device.lowTier), [gl, device.halfFloat, device.lowTier])
   useEffect(() => {
     trailRef.current = trail
     return () => {
@@ -275,7 +297,11 @@ export function PostFX({ bloom = 0.62, exposure = 1.06 }: PostFXProps) {
   }, [trail])
 
   const composer = useMemo(() => {
-    const float = !!gl.getContext().getExtension('EXT_color_buffer_half_float')
+    // measured, not assumed: `caps()` builds a real RGBA16F framebuffer and checks it, because a
+    // phone can advertise the extension and still refuse the target
+    // 16-bit colour buffers are worth their weight on a desktop and are the first thing to give on a
+    // phone: the grade tolerates 8 bits, the context does not tolerate the megabytes
+    const float = device.halfFloat && !device.lowTier
     const comp = new EffectComposer(gl, {
       frameBufferType: float ? THREE.HalfFloatType : THREE.UnsignedByteType,
       multisampling: 0,
@@ -292,14 +318,15 @@ export function PostFX({ bloom = 0.62, exposure = 1.06 }: PostFXProps) {
     })
     const final = new FinalEffect(exposure)
     const distort = new DistortEffect(trail.texture, trail.texelSize)
-    const smaa = new SMAAEffect()
 
     comp.addPass(new EffectPass(camera, bloomEffect))
     comp.addPass(new EffectPass(camera, final))
     comp.addPass(new EffectPass(camera, distort))
-    comp.addPass(new EffectPass(camera, smaa))
+    // SMAA is two extra full-frame passes and two more targets: on a phone the canvas already renders
+    // at 2× and the grade's dither hides the rest, so the edge pass stays on the large screen
+    if (!device.lowTier) comp.addPass(new EffectPass(camera, new SMAAEffect()))
     return { comp, bloomEffect, final, distort }
-  }, [gl, scene, camera, trail, exposure])
+  }, [gl, scene, camera, trail, exposure, device.lowTier])
 
   useEffect(() => () => composer.comp.dispose(), [composer])
 
@@ -309,9 +336,15 @@ export function PostFX({ bloom = 0.62, exposure = 1.06 }: PostFXProps) {
     if (u) u.value = exposure
   }, [composer, bloom, exposure])
 
+  // The chain runs at the canvas's own device resolution, capped by a pixel budget: several RGBA16F
+  // buffers at full phone resolution is how a phone loses its context.
   useEffect(() => {
-    composer.comp.setSize(size.width, size.height)
-  }, [composer, size.width, size.height])
+    const dpr = gl.getPixelRatio()
+    const budget = device.lowTier ? 900_000 : 3_400_000
+    const full = size.width * dpr * size.height * dpr
+    const scale = Math.min(1, Math.sqrt(budget / Math.max(1, full)))
+    composer.comp.setSize(Math.max(1, Math.round(size.width * dpr * scale)), Math.max(1, Math.round(size.height * dpr * scale)))
+  }, [composer, gl, device.lowTier, size.width, size.height])
 
   useFrame((state, delta) => {
     trail.resize(size.width, size.height)

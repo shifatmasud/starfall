@@ -21,22 +21,39 @@ src/
   App.tsx                      the shell: a fixed 100vw×100vh canvas, no UI at all
   scenes/
     Scene1Space.tsx            scene 1: backdrop, rocks, flare, orb, post chain
-    Scene2Clouds.tsx           scene 2: baked morning sky, diving orb, comet wake
-    CloudSea.tsx               the painted cloudscape, baked once per viewport
+    Scene2Clouds.tsx           scene 2: sky, scanned range, drei cloud sea, diving orb
+    scene2/Sky.tsx             the low sun, the gradient and the cirrus, baked once
+    scene2/Range.tsx           the range, displaced from a scanned elevation model
+    scene2/CloudSea.tsx        the sea of cumulus — drei <Clouds>/<Cloud>, three tones per billow
+    scene2/frame.ts            frame coordinates (u, v) → world, at any depth
     CometOrb.tsx               the diving crystal and its luminous wake
     SpaceBackdrop.tsx          sky, star field and the Earth's limb, baked once into a texture
     Asteroids.tsx              seven instances of three scanned rocks
     StarFlare.tsx              the bright star and the orb's halo
     layout.ts                  the composition in screen units (phone ↔ desktop)
   components/
+    SceneCanvas.tsx            the frame around every scene: capability probe, context-loss recovery,
+                               still fallback — a black page is never an acceptable answer
     CrystalStarOrb.tsx         the glass star and its ring system
     rock/MoonRock0{1,3,5}.tsx  gltfjsx components for the Poly Haven scans
     rock/rockMaterial.ts       the scan's shader (colour + normal + roughness maps)
   gl/
-    PostFX.tsx                 Bloom → Final grade/ACES → ScreenPaint distortion → SMAA
+    capabilities.ts            what this device can actually do, measured with a real framebuffer
+    PostFX.tsx                 Bloom → Final grade → ScreenPaint distortion → SMAA
     fluidTrail.ts              the cursor trail's simulation (surface-tension / Lusion ScreenPaint)
 public/models/                 the three scans, base64 (decoded to .glb by vite.config.ts)
+public/tex/                    the cloud sprite and the range's heightmap, base64
+public/poster/                 the stills shown when a device cannot run WebGL
 ```
+
+## Scene 2's range is real ground
+
+`public/tex/dem/alps-h.webp` is an 8 KB heightmap built by `scripts/build-dem.py` from **AWS Open
+Data's terrain tiles** (`elevation-tiles-prod`, terrarium-encoded PNG, SRTM/GMTED) around the
+Matterhorn and Monte Rosa massif at zoom 12 — 1593 m to 4352 m. `Range.tsx` displaces a heightfield
+mesh from it, bakes snow above the real snow line on the slopes shallow enough to hold it, bakes the
+low sun into the vertex colours, and lets the scene's fog do the aerial perspective. Nothing in that
+silhouette is noise: every peak is a place.
 
 ## Assets
 
@@ -47,6 +64,14 @@ then resized to 512 px textures (webp) and Draco-compressed — **100 / 64 / 79 
 They travel as `.glb.b64` and are decoded into `public/models/*.glb` at build time: the only write
 path available to this repository from where the scene is built is text-only, and a binary pushed
 through it arrives corrupt.
+
+## Drawing on a phone
+
+`gl/capabilities.ts` measures the device before the first canvas — a real RGBA16F framebuffer, checked
+for completeness and read back, never an extension string — and `components/SceneCanvas.tsx` uses it:
+DPR and the post chain's pixel budget come down on phone-class GPUs, SMAA and 16-bit buffers are
+desktop-only, a lost context remounts the renderer, a stalled frame counter does the same, and a device
+that cannot create a context at all gets a rendered still of the scene with one quiet line of text.
 
 ## Post chain
 
