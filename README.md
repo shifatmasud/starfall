@@ -4,10 +4,11 @@ Eight scenes, one per chapter of a fall from space to the ocean floor. Each scen
 full-bleed WebGL2 picture, mounted alone by `?scene=N`, with no interface on top of it.
 
 **Scene 1 is built: `?scene=1`** — a crystal star over the Earth's limb.
+**Scene 2 is built: `?scene=2`** — the star diving through a morning cloud sea, trailing a comet wake.
 
 ```
 npm install
-npm run dev        # http://localhost:5173/?scene=1
+npm run dev        # http://localhost:5173/?scene=1  (or ?scene=2)
 npm run build      # tsc --noEmit && vite build
 npm run qa:scene   # headless SwiftShader screenshots of ?scene=1, desktop + mobile
 ```
@@ -20,6 +21,9 @@ src/
   App.tsx                      the shell: a fixed 100vw×100vh canvas, no UI at all
   scenes/
     Scene1Space.tsx            scene 1: backdrop, rocks, flare, orb, post chain
+    Scene2Clouds.tsx           scene 2: baked morning sky, diving orb, comet wake
+    CloudSea.tsx               the painted cloudscape, baked once per viewport
+    CometOrb.tsx               the diving crystal and its luminous wake
     SpaceBackdrop.tsx          sky, star field and the Earth's limb, baked once into a texture
     Asteroids.tsx              seven instances of three scanned rocks
     StarFlare.tsx              the bright star and the orb's halo
@@ -61,3 +65,24 @@ the distortion pass (blue-noise dither, nine jittered taps, the wake fringe) rea
 - Stars are a hashed grid in device pixels, so they stay crisp at any DPR.
 - The Earth's clouds use arc-length coordinates along the limb, which is what keeps them painterly
   instead of radially stretched.
+
+## Scene 2 notes
+
+- The sky, the sun, the range and the cloud banks are one shader baked into a texture once per
+  viewport, for the same reason as scene 1's backdrop: on a CPU rasterizer the difference between a
+  slideshow and a scene.
+- Each bank of cumulus is a density field biased by height, shaded by the field's own slope: the
+  normal comes from three samples of the same noise, so the crowns are lit cream, the bodies warm
+  grey and only the hollows fall to violet.
+- The comet wake is a tapered additive sheet: stretched filaments for the strands, hashed points for
+  the sparkles, and a head glow that melts into the orb.
+
+## The trail
+
+The wake is a liquid lens over the finished frame, not a smear of the paint itself. The field's own
+weight gradient gives the surface's tilt, the frame is displaced down that slope with a per-channel
+difference, and the bead under the finger magnifies what it crosses. Outside the field's footprint
+the pass returns the frame untouched, to the pixel. A stroke begins where the hand is: the first
+contact snaps the brush instead of dragging it from the last position, and release clears the stroke.
+`node scripts/trail-origin-qa.mjs` captures a touch scrub from the centre-right and diffs the frame
+to prove nothing is painted at the origin.
