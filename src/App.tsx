@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { Soundscape } from './audio/Soundscape'
 import { createWebGL2Context, describeRenderer, type RendererInfo } from './gl/webgl2'
 import { PostFX, trailRef } from './gl/PostFX'
+import { loadHeightField } from './v2/heightfield'
 import { capDpr, TIER } from './scene/atmosphere/quality'
 import { Stage } from './v2/Stage'
 import { live, sampleLive } from './v2/palettes'
@@ -128,6 +129,9 @@ export default function App() {
   const [framed, setFramed] = useState(false)
   const [grace, setGrace] = useState(false)
   const [forced, setForced] = useState(false)
+  // the scanned height field has to be in memory before the world is built, or the skyline falls
+  // back to its own shapes and the terrain data never reaches the geometry
+  const [heightReady, setHeightReady] = useState(false)
   const footSpace = useRef<HTMLDivElement>(null)
 
   const done = (framed && (fonts || grace)) || forced
@@ -136,6 +140,19 @@ export default function App() {
   useMotionValueEvent(scrollYProgress, 'change', (value) => {
     Soundscape.mix(Math.min(7, Math.max(0, value * 7)))
   })
+
+  useEffect(() => {
+    let alive = true
+    // never hold the scene hostage to an asset: if the field is slow or missing, build anyway
+    const fallback = window.setTimeout(() => alive && setHeightReady(true), 1500)
+    loadHeightField().finally(() => {
+      if (alive) setHeightReady(true)
+    })
+    return () => {
+      alive = false
+      window.clearTimeout(fallback)
+    }
+  }, [])
 
   useEffect(() => {
     document.documentElement.classList.add('pre-lock')
@@ -246,7 +263,7 @@ export default function App() {
               fallback={<div className="canvas-fallback">This journey needs WebGL2.</div>}
             >
               <Suspense fallback={null}>
-                <Stage progress={scrollYProgress} />
+                {heightReady ? <Stage progress={scrollYProgress} /> : null}
               </Suspense>
               <ReadyProbe onFirstFrame={onFirstFrame} />
               <ToneProbe progress={scrollYProgress} onChange={setOnDark} />

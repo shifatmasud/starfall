@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { hasHeightField, ridgeFromField } from './heightfield'
 
 /**
  * Every object in Starfall's eight dioramas, built as plain three geometry so the scene is one
@@ -338,7 +339,11 @@ export function buildHorizonRing(radius: number, height: number, color: THREE.Co
     const a = Math.atan2(z, x)
     // one shoulder per range, so the skyline reads as mountains rather than as a sine wave
     const shoulder = 0.62 + 0.38 * Math.sin(a * 1 + phases[2] * 0.5)
-    const crest = ridgeAt(a) * shoulder
+    // a scanned height field, when there is one, decides where the skyline actually goes: ridges and
+    // river valleys come from the terrain data, not from a hand-written waveform
+    const crest = hasHeightField()
+      ? 0.18 + 1.05 * ridgeFromField(a, 1, 1.7) * shoulder
+      : ridgeAt(a) * shoulder
     const y = position.getY(i)
     const t = (y + height / 2) / height
     const lift = Math.max(0, crest) * height * 1.05 * Math.pow(t, 1.5)
@@ -498,7 +503,14 @@ export function scatter(
   count: number,
   heightAt: (x: number, z: number) => number,
   seed: number,
-  opts: { radius?: number; near?: number; scale?: [number, number]; spin?: boolean; sink?: number } = {},
+  opts: {
+    radius?: number
+    near?: number
+    scale?: [number, number]
+    spin?: boolean
+    sink?: number
+    avoid?: (x: number, z: number) => boolean
+  } = {},
 ): THREE.Group {
   const r = rng(seed)
   const radius = opts.radius ?? 90
@@ -510,6 +522,7 @@ export function scatter(
     const d = near + Math.sqrt(r()) * (radius - near)
     const x = Math.cos(a) * d
     const z = Math.sin(a) * d
+    if (opts.avoid && opts.avoid(x, z)) continue
     const node = builder(i)
     const y = heightAt(x, z) - (opts.sink ?? 0)
     node.position.set(x, y, z)
@@ -767,25 +780,32 @@ export function buildCloudSea(texture: THREE.Texture, count: number, seed: numbe
 }
 
 /** Shafts of light through water: tall cones, additive, barely visible, which is the point. */
-export function buildLightShafts(count: number, seed: number, height = 90): THREE.Group {
+export function buildLightShafts(
+  count: number,
+  seed: number,
+  height = 90,
+  opts: { color?: string; tiltX?: number; tiltZ?: number; spread?: number; near?: number; opacity?: number } = {},
+): THREE.Group {
   const r = rng(seed)
   const group = new THREE.Group()
+  const spread = opts.spread ?? 70
+  const near = opts.near ?? 8
   for (let i = 0; i < count; i += 1) {
     const a = r() * TAU
-    const d = 8 + r() * 70
+    const d = near + r() * spread
     const width = 6 + r() * 12
     const material = new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#bcecff'),
+      color: new THREE.Color(opts.color ?? '#bcecff'),
       transparent: true,
-      opacity: 0.05 + r() * 0.06,
+      opacity: (opts.opacity ?? 0.06) * (0.7 + r() * 0.8),
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
     })
     const shaft = new THREE.Mesh(new THREE.ConeGeometry(width, height, 12, 1, true), material)
     shaft.position.set(Math.cos(a) * d, height * 0.42, Math.sin(a) * d)
-    shaft.rotation.z = (r() - 0.5) * 0.22
-    shaft.rotation.x = (r() - 0.5) * 0.22
+    shaft.rotation.z = (r() - 0.5) * 0.22 + (opts.tiltZ ?? 0)
+    shaft.rotation.x = (r() - 0.5) * 0.22 + (opts.tiltX ?? 0)
     group.add(shaft)
   }
   return group

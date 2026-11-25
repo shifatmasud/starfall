@@ -87,8 +87,8 @@ export function useArt(): Art {
     const ground: Record<string, THREE.MeshStandardMaterial> = {}
     for (const [id, set] of Object.entries(GROUND_SETS)) {
       ground[id] = new THREE.MeshStandardMaterial({
-        map: map(set.diff, 110, true),
-        normalMap: map(set.nor, 110, false),
+        map: map(set.diff, 260, true),
+        normalMap: map(set.nor, 260, false),
         normalScale: new THREE.Vector2(0.55, 0.55),
         roughness: 0.97,
         metalness: 0,
