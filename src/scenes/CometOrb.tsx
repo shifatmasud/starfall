@@ -56,7 +56,7 @@ void main() {
   // t = 0 at the crystal, 1 at the far end of the wake
   float t = clamp(vUv.x, 0.0, 1.0);
   float y = (vUv.y - 0.5) * 2.0;                     // -1..1 across the tail
-  float halfW = mix(0.10, 0.50, pow(t, 0.55));
+  float halfW = mix(0.16, 0.62, pow(t, 0.55));
   float across = abs(y) / max(halfW, 0.001);
 
   // a hot core that leaves the crystal and thins as it goes, inside a soft sheath of light
@@ -70,7 +70,7 @@ void main() {
   vec3 col = mix(ice, white, clamp(core * 1.6 + 0.35, 0.0, 1.0));
   col = mix(col, gold, smoothstep(0.45, 1.0, t) * 0.45 * (1.0 - core));
 
-  float alpha = core * 1.55 + sheath * 0.42 + streaks * 0.55;
+  float alpha = core * 1.15 + sheath * 0.50 + streaks * 0.45;
   alpha *= smoothstep(0.0, 0.03, t);
 
   // sparkles: hashed points drifting back along the wake, each twinkling on its own clock
@@ -191,7 +191,7 @@ export function CometOrb({ layout, place }: { layout: Layout; place: CometPlace 
       </mesh>
 
       {/* the crystal's halo */}
-      <mesh material={glowMat} position={[0, 0, 0.03]} renderOrder={1} scale={r * 9}>
+      <mesh material={glowMat} position={[0, 0, -0.12]} renderOrder={-1} scale={r * 9}>
         <planeGeometry args={[1, 1]} />
       </mesh>
 

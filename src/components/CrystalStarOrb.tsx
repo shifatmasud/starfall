@@ -134,10 +134,18 @@ void main() {
   if (uSky > 0.5) {
     // a star seen in daylight: white-hot heart, warm gold body, a cool cut rim. None of the dark
     // space the glass refracts in the first scene belongs here, so this is its own simple body.
-    vec3 day = mix(vec3(0.90, 0.94, 1.0), vec3(1.0, 0.96, 0.90), smoothstep(0.0, 0.9, coreD));
-    day = mix(day, vec3(1.0, 0.86, 0.62), pow(coreD, 3.0) * 0.55);
-    day += vec3(1.0, 0.99, 0.96) * pow(coreD, 12.0) * 1.30;
-    day = mix(day, vec3(0.72, 0.84, 1.0), smoothstep(0.80, 1.0, fres) * 0.85);
+    // the body has to sit below white or the shoulder in the grade flattens it into a paper disc:
+    // cool at the rim, warm across the face, and only the very heart above display white
+    // facing runs 1 at the middle of the disc to 0 at its silhouette, which is the only way a
+    // sphere lit from behind the viewer can show a body: core hot, face warm, edge cool
+    float facing = clamp(ndv, 0.0, 1.0);
+    vec3 day = mix(vec3(0.38, 0.52, 0.82), vec3(0.99, 0.96, 0.91), smoothstep(0.0, 0.88, facing));
+    day = mix(day, vec3(1.0, 0.88, 0.68), pow(facing, 1.8) * 0.45);
+    // the bloom takes anything above display white and spreads it, so the body is kept well below:
+    // only the heart of the crystal is allowed to blow out, and the rest keeps its form
+    day *= 0.34;
+    day += vec3(1.0, 0.99, 0.96) * pow(facing, 3.2) * 1.45;
+    day = mix(day, vec3(0.30, 0.46, 0.84), smoothstep(0.70, 1.0, fres) * 0.95);
     fragColor = vec4(day, 1.0);
     return;
   }
