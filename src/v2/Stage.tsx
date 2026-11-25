@@ -233,12 +233,12 @@ export function Stage({ progress }: { progress: MotionValue<number> }) {
       fill.current.position.set(camera.position.x - 55, camera.position.y + 60, camera.position.z + 85)
       fill.current.target.position.copy(scratch)
       fill.current.target.updateMatrixWorld()
-      fill.current.intensity = 1.9 + live.sunPower * 0.22
+      fill.current.intensity = 2.6 + live.sunPower * 0.3
       fill.current.color.setRGB(live.sun[0], live.sun[1], live.sun[2])
     }
 
     if (sky.current) {
-      sky.current.intensity = 0.15 + live.ambientPower * 0.85
+      sky.current.intensity = 0.3 + live.ambientPower * 1.15
       sky.current.color.setRGB(live.ambient[0], live.ambient[1], live.ambient[2])
     }
 
@@ -286,7 +286,7 @@ export function Stage({ progress }: { progress: MotionValue<number> }) {
       <Sky />
       <Stars />
       <ambientLight ref={sky} intensity={0.6} color="#d6e8ff" />
-      <hemisphereLight args={['#bfe0ff', '#4e5f38', 0.55]} />
+      <hemisphereLight args={['#d8ecff', '#6d7f4a', 0.95]} />
       <directionalLight
         ref={sun}
         castShadow

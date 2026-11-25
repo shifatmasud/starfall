@@ -14,7 +14,10 @@ const BASE = '/art/ms'
 const MODELS = '/models'
 
 export const GROUND_SETS: Record<string, { diff: string; nor: string }> = {
-  forest: { diff: `${BASE}/mossy_forest_floor_diff.jpg`, nor: `${BASE}/mossy_forest_floor_nor.jpg` },
+  // the forest floor is a real leaf-litter scan under the moss, which is what the reference floor is:
+  // leaves and moss, not a green carpet
+  forest: { diff: `${BASE}/fallen_leaves_diff.jpg`, nor: `${BASE}/fallen_leaves_nor.jpg` },
+  moss: { diff: `${BASE}/mossy_forest_floor_diff.jpg`, nor: `${BASE}/mossy_forest_floor_nor.jpg` },
   lake: { diff: `${BASE}/lawn_grass_diff.jpg`, nor: `${BASE}/lawn_grass_nor.jpg` },
   sky: { diff: `${BASE}/lawn_grass_diff.jpg`, nor: `${BASE}/lawn_grass_nor.jpg` },
   desert: { diff: `${BASE}/beach_sand_diff.jpg`, nor: `${BASE}/beach_sand_nor.jpg` },

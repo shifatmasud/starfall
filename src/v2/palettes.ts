@@ -32,8 +32,13 @@ export type ChapterPalette = {
   waterDeep: string | null
   /** star field */
   stars: number
+  /** 0 = palette gradient sky, 1 = the photographed CC0 sky (clouds and all) */
+  skyMix: number
   /** the orb's resting place for this chapter, relative to the diorama centre */
   orb: [number, number, number]
+  /** how big the pearl is here, in world units of radius; the forest wants a marble you could pick
+   *  up, space wants a moon. Defaults to 3.1. */
+  orbScale?: number
   /** camera key: where the lens sits, and what it is looking at */
   cam: { pos: [number, number, number]; look: [number, number, number]; fov: number }
   /** what is planted here */
@@ -70,6 +75,7 @@ const SPACE: ChapterPalette = {
   water: null,
   waterDeep: null,
   stars: 1,
+  skyMix: 0,
   orb: [-7, 15, -24],
   cam: { pos: [0, 14, 34], look: [6, -18, -120], fov: 46 },
   props: { rocks: 6 },
@@ -93,6 +99,7 @@ const SKY: ChapterPalette = {
   water: null,
   waterDeep: null,
   stars: 0,
+  skyMix: 0.4,
   orb: [2, 12, -30],
   cam: { pos: [0, 13, 26], look: [6, 8, -80], fov: 48 },
   props: { castle: true, far: 4 },
@@ -101,23 +108,27 @@ const SKY: ChapterPalette = {
 
 const FOREST: ChapterPalette = {
   id: 'forest',
-  horizon: '#cfe6c8',
-  mid: '#7fb87a',
-  zenith: '#2f6f8f',
-  sun: '#fff0c0',
-  sunDir: [0.5, 0.62, -0.6],
-  sunPower: 2.4,
-  ambient: '#8fbf7a',
-  ambientPower: 0.65,
-  fog: '#b8d8b0',
-  fogDensity: 0.0045,
-  ground: '#4d7a3a',
-  groundAlt: '#6f9a46',
+  horizon: '#c4dfc2',
+  mid: '#79ae76',
+  zenith: '#1d4634',
+  sun: '#fff8e8',
+  // raking, not overhead: a near-zenith sun is stopped dead by the canopy, which is what left the
+  // floor lit by ambient only and the whole chapter reading murky green
+  sunDir: [0.42, 0.52, -0.48],
+  sunPower: 3.9,
+  ambient: '#cfe6b0',
+  ambientPower: 1.75,
+  fog: '#c9e0c6',
+  fogDensity: 0.013,
+  ground: '#6fa554',
+  groundAlt: '#8cc06a',
   water: null,
   waterDeep: null,
   stars: 0,
-  orb: [0, 2.4, -13],
-  cam: { pos: [0, 2.3, 13], look: [-1.5, 5.0, -26], fov: 52 },
+  skyMix: 0,
+  orb: [2.2, 1.15, -7],
+  orbScale: 1.15,
+  cam: { pos: [-1.2, 1.7, 14], look: [1.2, 1.45, -30], fov: 56 },
   props: { pines: 44, birches: 18, rocks: 22, flowers: 220, ruins: true, far: 4 },
   streak: false,
 }
@@ -128,19 +139,20 @@ const LAKE: ChapterPalette = {
   mid: '#8fc9ef',
   zenith: '#3a86d8',
   sun: '#fff8e2',
-  sunDir: [0.42, 0.5, -0.72],
-  sunPower: 2.3,
-  ambient: '#a8d8f0',
-  ambientPower: 0.72,
-  fog: '#dff2fc',
-  fogDensity: 0.0013,
-  ground: '#5f9e48',
-  groundAlt: '#7cba56',
+  sunDir: [0.46, 0.62, 0.56],
+  sunPower: 3.2,
+  ambient: '#c6e2f4',
+  ambientPower: 1.15,
+  fog: '#dcefff',
+  fogDensity: 0.001,
+  ground: '#4f8f3c',
+  groundAlt: '#84c45c',
   water: '#2f86a8',
   waterDeep: '#0f4a6a',
   stars: 0,
-  orb: [0, 4.2, -20],
-  cam: { pos: [0, 3.2, 18], look: [0, 4.2, -36], fov: 47 },
+  skyMix: 0.92,
+  orb: [9, 6.5, -46],
+  cam: { pos: [0, 4.3, 20], look: [0, 13.5, -90], fov: 48 },
   props: { birches: 14, pines: 10, rocks: 18, flowers: 320, castle: true, far: 4 },
   streak: true,
 }
@@ -162,6 +174,7 @@ const DESERT: ChapterPalette = {
   water: '#3fb2c4',
   waterDeep: '#1a6f88',
   stars: 0,
+  skyMix: 0.45,
   orb: [0, 4.6, -22],
   cam: { pos: [-2, 4, 18], look: [0, 4, -34], fov: 48 },
   props: { palms: 20, rocks: 24, ruins: true, far: 4 },
@@ -185,6 +198,7 @@ const ICE: ChapterPalette = {
   water: '#14618f',
   waterDeep: '#08334f',
   stars: 0,
+  skyMix: 0.55,
   orb: [0, 4.6, -22],
   cam: { pos: [0, 3.2, 18], look: [0, 3.2, -34], fov: 50 },
   props: { icebergs: 24, rocks: 12, far: 4 },
@@ -208,6 +222,7 @@ const SEA: ChapterPalette = {
   water: '#12a8c8',
   waterDeep: '#0a5578',
   stars: 0,
+  skyMix: 0.8,
   orb: [0, 4.6, -22],
   cam: { pos: [0, 2.6, 16], look: [0, 3.4, -34], fov: 50 },
   props: { palms: 6, icebergs: 12, rocks: 10, far: 4 },
@@ -231,6 +246,7 @@ const DEEP: ChapterPalette = {
   water: null,
   waterDeep: null,
   stars: 0,
+  skyMix: 0,
   orb: [0, 2.4, -14],
   cam: { pos: [0, 2.6, 14], look: [0, 3.2, -26], fov: 50 },
   props: { rocks: 30, kelp: 40 },
@@ -254,6 +270,8 @@ export type Live = {
   ambientPower: number
   fogDensity: number
   stars: number
+  skyMix: number
+  orbScale: number
 }
 
 const hex = (value: string): [number, number, number] => {
@@ -281,6 +299,8 @@ export const live: Live = {
   ambientPower: SPACE.ambientPower,
   fogDensity: SPACE.fogDensity,
   stars: SPACE.stars,
+  skyMix: SPACE.skyMix,
+  orbScale: SPACE.orbScale ?? 3.1,
 }
 
 /** Sample the table at u = 0..7 into the shared `live` record. */
@@ -301,6 +321,8 @@ export function sampleLive(u: number) {
     live.ambientPower = last.ambientPower
     live.fogDensity = last.fogDensity
     live.stars = last.stars
+    live.skyMix = last.skyMix
+    live.orbScale = last.orbScale ?? 3.1
     return
   }
   const a = CHAPTERS[i]
@@ -320,4 +342,6 @@ export function sampleLive(u: number) {
   live.ambientPower = a.ambientPower + (b.ambientPower - a.ambientPower) * f
   live.fogDensity = a.fogDensity + (b.fogDensity - a.fogDensity) * f
   live.stars = a.stars + (b.stars - a.stars) * f
+  live.skyMix = a.skyMix + (b.skyMix - a.skyMix) * f
+  live.orbScale = (a.orbScale ?? 3.1) + ((b.orbScale ?? 3.1) - (a.orbScale ?? 3.1)) * f
 }
