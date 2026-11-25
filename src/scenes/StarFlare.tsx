@@ -37,10 +37,10 @@ void main() {
   col += vec3(0.72, 0.86, 1.0) * exp(-r * 9.0) * 1.05;
   col += vec3(0.36, 0.58, 1.0) * exp(-r * 3.6) * 0.30;
 
-  float sx = exp(-abs(p.y) * 260.0) * exp(-abs(p.x) * 7.0) * 1.5;
-  float sy = exp(-abs(p.x) * 260.0) * exp(-abs(p.y) * 8.0) * 1.2;
-  float dx = exp(-abs(p.x - p.y) * 190.0) * exp(-length(p) * 11.0) * 0.35;
-  float dy = exp(-abs(p.x + p.y) * 190.0) * exp(-length(p) * 11.0) * 0.35;
+  float sx = exp(-abs(p.y) * 260.0) * exp(-abs(p.x) * 8.5) * 1.0;
+  float sy = exp(-abs(p.x) * 260.0) * exp(-abs(p.y) * 9.5) * 0.9;
+  float dx = exp(-abs(p.x - p.y) * 190.0) * exp(-length(p) * 12.0) * 0.25;
+  float dy = exp(-abs(p.x + p.y) * 190.0) * exp(-length(p) * 12.0) * 0.25;
   col += vec3(0.86, 0.93, 1.0) * (sx + sy + dx + dy);
 
   col *= 1.0 - smoothstep(0.45, 1.0, r);

@@ -132,7 +132,7 @@ vec3 sky(vec2 p) {
   c += vec3(0.012, 0.020, 0.044) * smoothstep(0.35, 0.95, n) * (0.55 - 0.25 * p.x);
   c += vec3(0.006, 0.010, 0.022) * smoothstep(0.45, 0.95, n2);
   float ds = length(p - uStar);
-  c += vec3(0.10, 0.15, 0.28) * exp(-ds * 1.35) * 0.38;
+  c += vec3(0.08, 0.12, 0.24) * exp(-ds * 1.55) * 0.22;
   c += vec3(0.42, 0.56, 0.86) * exp(-ds * 6.0) * 0.30;
   float de = max(0.0, length(p - uEarth) - uRadius);
   c += vec3(0.06, 0.14, 0.34) * exp(-de * 5.0) * 0.22;
@@ -155,9 +155,9 @@ void main() {
 
   // the atmosphere: a thin hot crest, then the wide blue scatter above it
   float arc = 0.80 + 0.20 * fbm(vec2(atan(q.y, q.x) * 2.2, 3.0), 3);
-  col += vec3(0.86, 0.96, 1.0) * exp(-above * 380.0) * 1.75 * arc;
-  col += vec3(0.34, 0.60, 1.0) * exp(-above * 90.0) * 0.55 * arc;
-  col += vec3(0.12, 0.30, 0.68) * exp(-above * 22.0) * 0.22;
+  col += vec3(0.86, 0.96, 1.0) * exp(-above * 320.0) * 1.15 * arc;
+  col += vec3(0.34, 0.60, 1.0) * exp(-above * 95.0) * 0.50 * arc;
+  col += vec3(0.12, 0.30, 0.68) * exp(-above * 24.0) * 0.26;
 
   if (d < 0.0) {
     float z = sqrt(max(0.0, 1.0 - (rr * rr) / (uRadius * uRadius)));
@@ -189,12 +189,12 @@ void main() {
 
     vec3 sunDir = normalize(vec3(0.52, 0.62, 0.58));
     float ndl = clamp(dot(n, sunDir) * 1.3 + 0.12, 0.0, 1.0);
-    surf *= 0.42 + 0.85 * pow(ndl, 0.85);
+    surf *= 0.55 + 0.80 * pow(ndl, 0.85);
 
     float inside = exp(d * 140.0);
     surf = mix(surf, vec3(0.24, 0.46, 0.86), clamp(inside * 0.8, 0.0, 0.40));
     surf += vec3(0.30, 0.56, 1.0) * inside * 0.30;
-    surf += vec3(0.90, 0.97, 1.0) * exp(d * 420.0) * 1.25;
+    surf += vec3(0.90, 0.97, 1.0) * exp(d * 380.0) * 1.05;
 
     col = surf;
   }
