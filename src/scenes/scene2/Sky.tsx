@@ -60,16 +60,16 @@ void main() {
   float gy = uv.y * 0.52 / uHorizon;
 
   // ---- the gradient: saturated blue overhead, cooling through lilac, to warm pale gold at the horizon
-  vec3 col = mix(vec3(0.035, 0.180, 0.470), vec3(0.080, 0.290, 0.620), smoothstep(0.0, 0.16, gy));
-  col = mix(col, vec3(0.230, 0.450, 0.720), smoothstep(0.13, 0.30, gy));
-  col = mix(col, vec3(0.700, 0.730, 0.800), smoothstep(0.26, 0.42, gy));
+  vec3 col = mix(vec3(0.120, 0.330, 0.640), vec3(0.230, 0.460, 0.760), smoothstep(0.0, 0.16, gy));
+  col = mix(col, vec3(0.420, 0.610, 0.840), smoothstep(0.13, 0.30, gy));
+  col = mix(col, vec3(0.780, 0.800, 0.860), smoothstep(0.26, 0.42, gy));
   col = mix(col, vec3(0.985, 0.860, 0.700), smoothstep(0.38, 0.54, gy));
 
   // a warm wash on the sun's side, wide enough to be light rather than a lamp
   vec2 sp = (uv - uSun) * vec2(uAspect, 1.0);
   float r = length(sp);
   float wash = exp(-r * 4.4);
-  col += vec3(1.0, 0.78, 0.48) * wash * 0.55;
+  col += vec3(1.0, 0.78, 0.48) * wash * 0.38;
   col = mix(col, vec3(1.0, 0.90, 0.76), smoothstep(0.20, 0.015, r) * 0.26);
 
   // ---- high cirrus: two veils stretched by the wind, lit warm where they face the sun
@@ -105,7 +105,7 @@ void main() {
 
   // the corners fall away a touch, as a long lens does
   vec2 lens = (uv - 0.5) * vec2(1.0, 1.15);
-  col *= 1.0 - dot(lens, lens) * 0.18;
+  col *= 1.0 - dot(lens, lens) * 0.10;
 
   // hold the colour through the film curve: the blue must stay blue and the gold must stay gold
   float luma = dot(col, vec3(0.2126, 0.7152, 0.0722));
