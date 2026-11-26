@@ -4,16 +4,14 @@ import { WaterPlane } from './scan/WaterPlane'
 import { NamaqualandBoulder02 } from '../scans/models/NamaqualandBoulder02'
 import { ScanPalm } from './scan/ScanPalm'
 import { GrassMedium02 } from '../scans/models/GrassMedium02'
-import { Shrub04 } from '../scans/models/Shrub04'
-import { SandRocksSmall01 } from '../scans/models/SandRocksSmall01'
 
 /**
  * Scene 5 — Desert. The orb soars with a warm streak over desert rock and sparse trees.
  *
  * World: Poly Haven `goegap` (a photographed Namaqualand desert, red sand and koppies under a clear
- * sky), ground-projected. Props, all scans: quiver trees (the desert tree of that same landscape,
- * standing where the reference has palms), granite boulders and sandstone rocks for the ruins'
- * massing, around an oasis pool that mirrors the photographed sky.
+ * sky), ground-projected. Props, all scans: Quixel Megascans palms (scanned palm-tree trunk crowned
+ * with scanned tropical-palm leaf crowns, SSS on the fronds), Poly Haven grass, granite boulders for
+ * the ruins' massing, around an oasis pool that mirrors the photographed sky.
  */
 
 export function Scene5Desert() {
@@ -33,30 +31,17 @@ export function Scene5Desert() {
       poster={{ portrait: '/poster/scene5-portrait.webp', landscape: '/poster/scene5-landscape.webp' }}
       bloom={0.6}
       exposure={1.2}
-      haze={0.4}
-      soften={{ amount: 0.3, radius: 3, mist: 0.18 }}
+      haze={0.5}
+      soften={{ amount: 0.45, radius: 3, mist: 0.2 }}
     >
-      <WaterPlane far={2.6} at={[-0.8, -5.4]} y={0.015} wind={2.5} fetch={300} chl={0.03} metersPerUnit={0.6} depth={1.6} sunFrom={[-5, 7, -2]} sunColor="#ffe6c2" lift={0.8} skyBright={0} />
-      <ScanPalm height={3.0} position={[-3.0, 0, -7.0]} yaw={0.4} />
-      <ScanPalm height={2.5} position={[-1.8, 0, -8.0]} yaw={1.7} fronds={8} />
-      <ScanPalm height={2.2} position={[2.0, 0, -9.0]} yaw={0.9} fronds={8} />
-      <ScanPalm height={1.9} position={[3.4, 0, -7.0]} yaw={2.4} fronds={7} />
-      <Fit size={0.9} position={[-3.8, 0, -3.4]} rotation={[0, 0.5, 0]}><GrassMedium02 /></Fit>
-      <Fit size={0.8} position={[3.4, 0, -2.6]} rotation={[0, 1.5, 0]}><GrassMedium02 /></Fit>
-      <Fit size={0.7} position={[-2.6, 0, -4.2]}><GrassMedium02 /></Fit>
-      <Fit size={0.9} position={[2.4, 0, -5.2]} rotation={[0, 2.5, 0]}><Shrub04 /></Fit>
-      <Fit size={2.2} position={[-1.8, 0, -5.5]} rotation={[0, 0.3, 0]}>
-        <NamaqualandBoulder02 />
-      </Fit>
-      <Fit size={1.3} position={[2.9, 0, -4.2]} rotation={[0, 1.4, 0]}>
-        <NamaqualandBoulder02 />
-      </Fit>
-      <Fit size={0.9} position={[-0.9, 0, -1.9]} rotation={[0, 0.2, 0]}>
-        <SandRocksSmall01 />
-      </Fit>
-      <Fit size={0.7} position={[0.9, 0, -1.6]} rotation={[0, 2.6, 0]}>
-        <SandRocksSmall01 />
-      </Fit>
+      <WaterPlane far={2.6} at={[-0.8, -5.4]} y={0.015} wind={2.5} fetch={300} chl={0.03} metersPerUnit={0.6} depth={1.5} sunFrom={[-5, 7, -2]} sunColor="#ffe6c2" lift={0.8} skyBright={0} />
+      <ScanPalm height={4.2} position={[-5.0, 0, -13.0]} yaw={0.4} variant={0} crown={2.0} />
+      <ScanPalm height={3.5} position={[-3.2, 0, -14.0]} yaw={1.7} variant={1} crown={2.0} />
+      <ScanPalm height={3.0} position={[4.2, 0, -14.5]} yaw={0.9} variant={2} crown={2.0} />
+      <ScanPalm height={2.2} position={[6.5, 0, -12.5]} yaw={2.4} variant={1} crown={2.0} />
+      <Fit size={1.5} position={[3.6, 0, -2.4]} rotation={[0, 1.4, 0]}><NamaqualandBoulder02 /></Fit>
+      <Fit size={2.0} position={[-4.4, 0, -3.2]} rotation={[0, 0.3, 0]}><NamaqualandBoulder02 /></Fit>
+      <Fit size={0.8} position={[-2.2, 0, -1.8]}><GrassMedium02 /></Fit>
     </ScanScene>
   )
 }
