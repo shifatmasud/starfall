@@ -3,9 +3,10 @@ import { useMemo } from 'react'
 import { PostFX } from '../gl/PostFX'
 import { SceneCanvas } from '../components/SceneCanvas'
 import { Sky } from './scene2/Sky'
-import { Range } from './scene2/Range'
+import { Peak } from './scene2/Peak'
 import { CloudSea } from './scene2/CloudSea'
-import { CometOrb } from './CometOrb'
+import { Orb } from './scan/ScanScene'
+import { at, sizeAt } from './scene2/frame'
 import { CAM_Z, layoutFor, type Layout } from './layout'
 
 /**
@@ -51,46 +52,22 @@ function Scene({ layout }: { layout: Layout }) {
 
       <Sky layout={layout} />
 
-      {/* real scanned ground: the Alps around the Matterhorn, displaced from a heightmap */}
-      <Range
-        aspect={layout.aspect}
-        zNear={-62}
-        zFar={-104}
-        u0={-0.75}
-        u1={1.15}
-        baseY={-6.0}
-        topY={5.4}
-        haze={0.80}
-        snowLine={2700}
-        riseIn={0.35}
-        sinkIn={0.45}
-        columns={140}
-        rows={48}
-        flip
-      />
-      <Range
-        aspect={layout.aspect}
-        zNear={-30}
-        zFar={-70}
-        u0={0.42}
-        u1={1.34}
-        baseY={-3.4}
-        topY={7.6}
-        haze={0.42}
-        snowLine={2850}
-        riseIn={0.14}
-        sinkIn={0.30}
-        columns={220}
-        rows={64}
-      />
+      {/* one real summit out of the cloud sea, mid-distance on the right: the Matterhorn's own DEM */}
+      <Peak aspect={layout.aspect} u={0.862} v={0.345} z={-28} size={8.2} yaw={0.5} />
 
       <CloudSea layout={layout} layer="back" renderOrder={-2} />
-      <CometOrb layout={layout} place={{ u: 0.445, v: 0.585, z: -6, frac: 0.088 }} />
+      {/* the glass meteor, low right of centre, its wake running up-left for a third of the frame */}
+      <Orb
+        orb={{ position: at(0.53, 0.56, -6, layout.aspect), radius: sizeAt(0.064, 0, -6, layout.aspect)[0] / 2 }}
+        streak={{ dir: [-0.33 * layout.aspect, 0.23], len: Math.hypot(0.33 * layout.aspect, 0.23), width: 0.03, color: '#ffe2b0', strength: 1.25 }}
+        look={{ light: [-0.25, 0.9], tint: '#f6f2ff', rim: '#fff4e2', haloColor: '#ffe6c0', halo: 0.45, gain: 1.08 }}
+        glow={{ color: '#ffdcb0', intensity: 4, distance: 10 }}
+      />
       <CloudSea layout={layout} layer="front" renderOrder={2} />
 
       <FrameProbe />
       <Rig layout={layout} />
-      {new URLSearchParams(location.search).has('nopost') ? null : <PostFX bloom={0.5} exposure={1.0} />}
+      {new URLSearchParams(location.search).has('nopost') ? null : <PostFX bloom={0.7} exposure={1.0} haze={0.35} soften={{ amount: 0.55, radius: 3.5, mist: 0.06 }} />}
     </>
   )
 }

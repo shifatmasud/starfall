@@ -44,7 +44,7 @@ export function layoutFor(width: number, height: number): Layout {
     },
     star: { x: lerp(0.30, 0.914, t), y: lerp(0.74, 0.818, t) },
     earth: { cx, cy: crest - r, r },
-    sun: { x: lerp(0.50, 0.455, t), y: lerp(0.17, 0.115, t) },
+    sun: { x: lerp(0.50, 0.48, t), y: lerp(0.17, 0.20, t) },
     dive: {
       x: lerp(-0.06, 0.26, t),
       y: lerp(0.02, -0.06, t),
