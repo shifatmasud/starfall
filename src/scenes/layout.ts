@@ -1,41 +1,57 @@
+import * as THREE from 'three'
+
 /**
- * Where things sit on screen, as a function of the viewport's shape.
+ * One composition, in screen units.
  *
- * The scene is authored for a range of aspect ratios rather than one canvas: on a tall phone the
- * planet's limb is a broad dome under the star, and on a wide desktop it is a low arc that hugs the
- * bottom edge and drops away to the right. Positions are interpolated between those two compositions
- * so nothing ever falls off the edge or crowds the middle.
- *
- * Coordinates are in the planet shader's space: y runs -1 (bottom) to 1 (top) and x is scaled by
- * the aspect so circles stay circles. The star's x is in the same aspect-scaled space.
+ * `y` runs -1 (bottom) to 1 (top); `x` runs -aspect to +aspect, so a circle stays a circle at any
+ * viewport. Values are interpolated between a phone frame and a wide desktop frame rather than
+ * re-composed per breakpoint: the plate is the same picture at every size, framed tighter as the
+ * viewport narrows.
  */
 
 export type Layout = {
   aspect: number
-  /** 0 for a tall portrait frame, 1 for a wide landscape one */
-  t: number
-  earth: { cx: number; cy: number; r: number }
+  /** 1 at phone aspect, 0 at 1.5 and wider */
+  mobile: number
+  halfW: number
+  orb: { x: number; y: number; r: number }
   star: { x: number; y: number }
+  earth: { cx: number; cy: number; r: number }
+  /** scene 2: the morning sun in screen uv (0..1 of the frame, y down) */
+  sun: { x: number; y: number }
+  /** scene 2: the orb diving through the cloud sea, in the same units as `orb` */
+  dive: { x: number; y: number; r: number }
 }
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
-
-export function computeLayout(width: number, height: number): Layout {
-  const aspect = width / Math.max(1, height)
-  // 0.56 ≈ a 9:16 phone, 1.78 ≈ a 16:9 desktop
-  const t = clamp01((aspect - 0.56) / (1.78 - 0.56))
+export function layoutFor(width: number, height: number): Layout {
+  const aspect = Math.max(0.3, width / Math.max(1, height))
+  const t = THREE.MathUtils.clamp((aspect - 0.5) / 1.0, 0, 1)
+  const lerp = THREE.MathUtils.lerp
 
   // the planet: a huge circle; on wide frames its limb sweeps from mid-left down to the lower right, as in the panel
   const r = lerp(2.25, 5.2, t)
   const crest = lerp(-0.42, 0.925, t)
   const cx = lerp(-0.12, -2.95, t)
-  const cy = crest - r
 
   return {
     aspect,
-    t,
-    earth: { cx, cy, r },
+    mobile: 1 - t,
+    halfW: aspect,
+    orb: {
+      x: 0,
+      y: lerp(0.30, 0.182, t),
+      r: lerp(0.132, 0.214, t),
+    },
     star: { x: lerp(0.30, 0.80, t), y: lerp(0.74, 0.80, t) },
+    earth: { cx, cy: crest - r, r },
+    sun: { x: lerp(0.50, 0.48, t), y: lerp(0.17, 0.20, t) },
+    dive: {
+      x: lerp(-0.06, 0.26, t),
+      y: lerp(0.02, -0.06, t),
+      r: lerp(0.088, 0.098, t),
+    },
   }
 }
+
+/** camera distance that puts the z = 0 plane exactly on the -1..1 height window */
+export const CAM_Z = 1 / Math.tan((40 / 2) * (Math.PI / 180))
