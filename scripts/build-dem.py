@@ -83,5 +83,41 @@ def main():
     print(f'norm lo={lo:.1f} hi={hi:.1f}')
 
 
+def peak():
+    """Scene 2's lone summit: the Matterhorn alone, a tight square crop around its real summit at zoom
+    13 (~13 m per pixel), so its pyramid and its ridges are the mountain's own. Writes
+    public/tex/dem/matterhorn-h.webp (square, 0 = lowest in the crop, 255 = the summit)."""
+    global Z
+    Z = 13
+    x, y = tile_xy(45.9763, 7.6586, Z)
+    tx, ty = int(x), int(y)
+    big = Image.new('RGB', (768, 768))
+    for dx in range(-1, 2):
+        for dy in range(-1, 2):
+            big.paste(fetch(tx + dx, ty + dy), ((dx + 1) * 256, (dy + 1) * 256))
+    a = np.asarray(big).astype(np.float32)
+    elev = (a[:, :, 0] * 256 + a[:, :, 1] + a[:, :, 2] / 256.0) - 32768.0
+    cx, cy = int((x - (tx - 1)) * 256), int((y - (ty - 1)) * 256)
+    # snap to the true summit (the highest pixel near the coordinate)
+    win = elev[cy - 20:cy + 20, cx - 20:cx + 20]
+    sy, sx = np.unravel_index(win.argmax(), win.shape)
+    cy, cx = cy - 20 + sy, cx - 20 + sx
+    half = 160
+    crop = elev[cy - half:cy + half, cx - half:cx + half]
+    lo, hi = float(crop.min()), float(crop.max())
+    print(f'peak crop {crop.shape} elevation {lo:.0f} m .. {hi:.0f} m')
+    norm = np.clip((crop - lo) / (hi - lo), 0, 1)
+    im = Image.fromarray((norm * 255).astype(np.uint8), 'L').resize((256, 256), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, 'WEBP', quality=94, method=6)
+    os.makedirs(OUT, exist_ok=True)
+    open(os.path.join(OUT, 'matterhorn-h.webp'), 'wb').write(buf.getvalue())
+    print('matterhorn-h.webp', len(buf.getvalue()), 'bytes')
+
+
 if __name__ == '__main__':
-    main()
+    import sys
+    if 'peak' in sys.argv:
+        peak()
+    else:
+        main()
