@@ -161,7 +161,7 @@ void main() {
   col += vec3(1.0, 0.95, 0.86) * exp(-above * 55.0) * 0.34 * arc;
   col += vec3(1.0, 0.88, 0.70) * exp(-above * 26.0) * 0.16 * arc * smoothstep(-1.2, 0.2, p.x);
   col += vec3(0.34, 0.58, 1.0) * exp(-above * 46.0) * 0.28 * arc;
-  col += vec3(0.14, 0.32, 0.72) * exp(-above * 15.0) * 0.22;
+  col += vec3(0.20, 0.42, 0.90) * exp(-above * 15.0) * 0.34;
   col += vec3(0.05, 0.12, 0.32) * exp(-above * 5.0) * 0.12;
 
   if (d < 0.0) {
@@ -182,31 +182,32 @@ void main() {
     float micro = fbm(sp * 46.0 + warp * 2.0, 3);
 
     // cumulus heads: broad banks of small, bright puffs rather than a streaky smear
-    float mass = broad * 0.46 + detail * 0.34 + fine * 0.16 + micro * 0.08;
-    float cover = smoothstep(0.45, 0.62, mass);
-    float tops = smoothstep(0.48, 0.64, detail * 0.42 + fine * 0.42 + micro * 0.24);
+    float mass = broad * 0.56 + detail * 0.32 + fine * 0.10 + micro * 0.02;
+    // soft painted banks: a wide ramp, so cover melts into the sea instead of speckling
+    float cover = smoothstep(0.34, 0.64, mass);
+    float tops = smoothstep(0.42, 0.70, detail * 0.55 + fine * 0.35 + micro * 0.10);
     float puffs = smoothstep(0.54, 0.78, detail * 0.5 + fine * 0.38 + micro * 0.22);
 
-    vec3 sea = mix(vec3(0.014, 0.042, 0.098), vec3(0.030, 0.090, 0.195), fbm(sp * 1.8 + 5.0, 3));
+    vec3 sea = mix(vec3(0.040, 0.110, 0.240), vec3(0.075, 0.190, 0.380), fbm(sp * 1.8 + 5.0, 3));
     float land = smoothstep(0.58, 0.74, fbm(sp * 1.1 + vec2(21.0, 9.0), 3));
     vec3 rock = vec3(0.050, 0.052, 0.062) * (0.8 + 0.45 * fbm(sp * 9.0, 3));
     vec3 ground = mix(sea, rock, land * 0.7);
 
     // sunlit cream on the puff heads, blue-grey only in the lee of the bank
-    vec3 cloud = mix(vec3(0.44, 0.50, 0.64), vec3(1.0, 0.99, 0.97), tops);
+    vec3 cloud = mix(vec3(0.52, 0.62, 0.80), vec3(0.96, 0.97, 0.98), tops);
     cloud = mix(cloud, vec3(1.0, 0.93, 0.80), puffs * 0.55);
     ground *= 1.0 - cover * 0.30;
-    vec3 surf = mix(ground, cloud, cover * 0.88);
+    vec3 surf = mix(ground, cloud, cover * 0.86);
 
     vec3 sunDir = normalize(vec3(0.52, 0.62, 0.58));
     float ndl = clamp(dot(n, sunDir) * 1.3 + 0.12, 0.0, 1.0);
     surf *= 0.72 + 0.76 * pow(ndl, 0.85);
     surf += vec3(1.0, 0.88, 0.70) * cover * tops * 0.20 * ndl;
     // the air over the sea: a thin blue veil so the surface never reads as a cut-out
-    surf = mix(surf, vec3(0.30, 0.50, 0.86), clamp(exp(d * 26.0) * 0.30, 0.0, 0.22));
+    surf = mix(surf, vec3(0.36, 0.56, 0.92), clamp(exp(d * 10.0) * 0.42, 0.0, 0.40));
 
     float inside = exp(d * 70.0);
-    surf = mix(surf, vec3(0.30, 0.52, 0.90), clamp(inside * 0.8, 0.0, 0.34));
+    surf = mix(surf, vec3(0.42, 0.64, 0.98), clamp(inside * 0.9, 0.0, 0.50));
     surf += vec3(0.36, 0.60, 1.0) * inside * 0.30;
     surf += vec3(0.90, 0.96, 1.0) * exp(d * 90.0) * 0.34;
 
