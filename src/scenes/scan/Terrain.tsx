@@ -65,6 +65,7 @@ export function Terrain({
   edge = 0.1,
   floor = 0,
   flipX = false,
+  basins = [],
 }: {
   dem: string
   /** world width (x) and depth (z) of the crop */
@@ -83,6 +84,8 @@ export function Terrain({
   /** height (0..1 of relief) cut away as the base: the crop's lowland sinks under water or ground */
   floor?: number
   flipX?: boolean
+  /** world [x, z, radius] hollows pressed down to the floor (a pool's basin, a clearing), eased at their rims */
+  basins?: [number, number, number][]
 }) {
   const [field, setField] = useState<Field | null>(null)
   useEffect(() => {
@@ -115,9 +118,18 @@ export function Terrain({
         const ey = Math.min(j, nz - j) / nz
         const fall = Math.min(1, Math.min(ex, ey) / edge)
         const hv = Math.max(0, (sample(i / nx, j / nz) - floor) / (1 - floor)) * fall * fall * (3 - 2 * fall)
-        hts[k] = hv
+        const lx = (i / nx - 0.5) * size[0], lz = (j / nz - 0.5) * size[1]
+        // basins are given in world space: undo the mesh's own placement and yaw
+        let keep = 1
+        for (const [bx, bz, br] of basins) {
+          const dx = bx - position[0], dz = bz - position[2]
+          const cx = dx * Math.cos(yaw) - dz * Math.sin(yaw), cz = dx * Math.sin(yaw) + dz * Math.cos(yaw)
+          const t = Math.min(1, Math.max(0, (Math.hypot(lx - cx, lz - cz) - br) / br))
+          keep = Math.min(keep, t * t * (3 - 2 * t))
+        }
+        hts[k] = hv * keep
         pos[k * 3] = (i / nx - 0.5) * size[0]
-        pos[k * 3 + 1] = hv * relief - 0.02 * relief
+        pos[k * 3 + 1] = hts[k] * relief - 0.02 * relief
         pos[k * 3 + 2] = (j / nz - 0.5) * size[1]
       }
     }
@@ -160,7 +172,7 @@ export function Terrain({
     geo.computeBoundingSphere()
     return geo
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field, size[0], size[1], relief, yaw, sun[0], sun[1], sun[2], palette, haze, segments[0], segments[1], edge, floor, flipX])
+  }, [field, size[0], size[1], relief, yaw, sun[0], sun[1], sun[2], palette, haze, segments[0], segments[1], edge, floor, flipX, JSON.stringify(basins), position[0], position[2]])
 
   const material = useMemo(() => new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), [])
   useEffect(() => () => material.dispose(), [material])

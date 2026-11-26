@@ -20,7 +20,8 @@ from PIL import Image
 CACHE = '/tmp/dem-tiles'
 OUT = 'public/tex/dem'
 
-# name: (lat, lon, zoom, crop width px, crop height px, out width, out height, smoothing passes)
+# name: (lat, lon, zoom, crop width px, crop height px, out width, out height, smoothing passes[, turn])
+# turn: 1 turns the crop a quarter (north to the left), for a range that runs north-south
 SITES = {
     # Scene 6: the ice-clad Saint Elias front behind Disenchantment Bay, Alaska (USGS NED)
     'icefront': (60.10, -139.55, 10, 900, 300, 512, 170, 1),
@@ -30,6 +31,10 @@ SITES = {
     'ridge': (46.71, 7.90, 12, 500, 300, 256, 154, 1),
     # Scene 4: the meadow bank, the gentle pasture of the Bödeli plain at Interlaken
     'meadow': (46.68, 7.86, 14, 300, 160, 192, 102, 2),
+    # Scene 5: the star dunes of Erg Chebbi, Morocco, as the far dune range
+    'erg': (31.15, -3.98, 12, 200, 640, 320, 100, 2, 1),
+    # Scene 5: the dune floor at Sossusvlei, Namibia, as the sand around the oasis
+    'sand': (-24.69, 15.29, 13, 400, 240, 192, 115, 4),
 }
 
 
@@ -50,7 +55,8 @@ def fetch(z, tx, ty):
 
 
 def build(name):
-    lat, lon, z, cw, ch, ow, oh, smooth = SITES[name]
+    lat, lon, z, cw, ch, ow, oh, smooth, *rest = SITES[name]
+    turn = rest[0] if rest else 0
     x, y = tile_xy(lat, lon, z)
     px, py = int(x * 256), int(y * 256)
     x0, y0 = px - cw // 2, py - ch // 2
@@ -64,6 +70,9 @@ def build(name):
     for _ in range(smooth):
         norm = (np.roll(norm, 1, 0) + norm + np.roll(norm, -1, 0)) / 3.0
         norm = (np.roll(norm, 1, 1) + norm + np.roll(norm, -1, 1)) / 3.0
+    if turn:
+        norm = np.rot90(norm, 1)
+        cw, ch = ch, cw
     m_per_px = 156543.03 * math.cos(math.radians(lat)) / 2 ** z
     im = Image.fromarray((norm.clip(0, 1) * 255).astype(np.uint8), 'L').resize((ow, oh), Image.LANCZOS)
     buf = io.BytesIO()
