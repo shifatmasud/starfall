@@ -58,6 +58,8 @@ export type ScanSceneProps = {
   poster: { portrait: string; landscape: string }
   bloom?: number
   exposure?: number
+  soften?: { amount: number; radius: number; mist?: number }
+  haze?: number
   children?: ReactNode
 }
 
@@ -115,7 +117,7 @@ function Sea({ top, deep, fog }: { top: string; deep: string; fog: number }) {
   )
 }
 
-function Orb({ orb, look, streak, bubbles, glow }: Pick<ScanSceneProps, 'orb' | 'look' | 'streak' | 'bubbles' | 'glow'>) {
+export function Orb({ orb, look, streak, bubbles, glow }: Pick<ScanSceneProps, 'orb' | 'look' | 'streak' | 'bubbles' | 'glow'>) {
   const gl = useThree((s) => s.gl)
   const scene = useThree((s) => s.scene)
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
@@ -268,7 +270,7 @@ function Inner(props: ScanSceneProps) {
       <Suspense fallback={null}>{children}</Suspense>
       <Orb orb={props.orb} look={props.look} streak={props.streak} bubbles={props.bubbles} glow={props.glow} />
       <FrameProbe />
-      {new URLSearchParams(location.search).has('nopost') ? null : <PostFX bloom={bloom} exposure={exposure} />}
+      {new URLSearchParams(location.search).has('nopost') ? null : <PostFX bloom={bloom} exposure={exposure} soften={props.soften} haze={props.haze} />}
     </>
   )
 }
