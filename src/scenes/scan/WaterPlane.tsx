@@ -75,9 +75,15 @@ uniform vec2 uDirs[${N_WAVES}];
 uniform float uTime, uMpu, uMss, uLift, uDepth, uPool, uPoolR, uF0, uIor, uAmpSum;
 uniform vec2 uPoolC;
 uniform sampler2D uRefl, uRefr; uniform mat4 uReflVP, uMainVP; uniform float uUseRefl, uUseRefr, uShore, uNear, uSparkle, uSkyBright, uReflGain, uRefrDepth;
-uniform vec2 uAt;
+uniform vec2 uAt; uniform float uEncode;
 uniform vec3 uA, uBb, uB, uRinf, uKd, uBottom, uSunDir, uSunCol, uAWater;
 const float PI = 3.14159265;
+// colour pipeline: everything below is computed in LINEAR light. The HDRI is an sRGB texture (decoded by the
+// sampler), the reflection/refraction targets are linear data buffers, the sun colour arrives linear (THREE.Color),
+// authored display-space constants go through srgbToLinear, and the result is encoded once to sRGB (uEncode = 1) for the frame
+// buffer, which the post chain reads as display values; the reflection/refraction data targets stay linear (uEncode = 0).
+vec3 srgbToLinear(vec3 c){ c = max(c, 0.0); return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c)); }
+vec3 linearToSrgb(vec3 c){ c = max(c, 0.0); return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c)); }
 vec3 sky(vec3 d, float lod){
   if (uHasEnv < 0.5) return uFallback * (0.6 + 0.6 * clamp(d.y,0.,1.));
   d = uEnvRot * d;
@@ -119,7 +125,7 @@ void main(){
   vec3 Rh = normalize(vec3(R.x, 0.12 + 0.25 * R.y, R.z));
   vec3 refl = mix(sky(R, 1.0), sky(Rh, 2.0), 0.65);
   // clear-sky gradient (Rayleigh-blue zenith, pale horizon): lifts a dark photographed horizon band
-  vec3 clearSky = mix(vec3(0.62,0.78,1.0), vec3(0.28,0.56,0.9), pow(clamp(R.y,0.,1.), 0.5)) * uReflGain;
+  vec3 clearSky = srgbToLinear(mix(vec3(0.62,0.78,1.0), vec3(0.28,0.56,0.9), pow(clamp(R.y,0.,1.), 0.5))) * uReflGain;
   refl = mix(refl, max(refl, clearSky * 0.75), uSkyBright) * uReflGain;
   vec4 clipM = uMainVP * vec4(vW, 1.0);
   vec2 suv = clipM.xy / clipM.w * 0.5 + 0.5;
@@ -167,7 +173,7 @@ void main(){
     vec2 quv = clamp(suv + N.xz * 0.045, 0.002, 0.998);       // Snell: the ray bends toward the normal, shifting the submerged image
     vec4 rf = texture(uRefr, quv);
     vec3 Tr = exp(-uKd * uRefrDepth * 2.0);                  // Beer–Lambert through the submerged part
-    vec3 sub = rf.rgb * Tr + body * 0.45 * (1.0 - Tr) + vec3(0.0, 0.03, 0.05) * rf.a;
+    vec3 sub = rf.rgb * Tr + body * 0.45 * (1.0 - Tr) + srgbToLinear(vec3(0.0, 0.03, 0.05)) * rf.a;
     under = mix(under, sub, clamp(rf.a, 0.0, 1.0) * 0.9);
   }
   // sun glitter: stochastic Cox–Munk facets (each sparkle is one wave facet mirroring the sun)
@@ -187,7 +193,7 @@ void main(){
     glit *= F * 14.0 * uSparkle * smoothstep(0.0, 0.15, uSunDir.y);
   }
   vec3 col = F * refl + (1.0 - F) * under + uSunCol * (glint * 4.0 + glit);
-  outColor = vec4(col, 1.0);
+  outColor = vec4(uEncode > 0.5 ? linearToSrgb(col) : col, 1.0);   // sRGB in the frame (the post chain reads it as display values), linear in the data targets
 }`
 
 export function WaterPlane({
@@ -243,7 +249,7 @@ export function WaterPlane({
         uAWater: { value: v3(A_WATER) },
         uRefl: { value: null }, uRefr: { value: null }, uReflVP: { value: new THREE.Matrix4() }, uMainVP: { value: new THREE.Matrix4() },
         uUseRefl: { value: 0 }, uUseRefr: { value: 0 }, uShore: { value: shore }, uNear: { value: near }, uAt: { value: new THREE.Vector2(at[0], at[1]) },
-        uSparkle: { value: sparkle }, uSkyBright: { value: skyBright }, uReflGain: { value: reflGain }, uRefrDepth: { value: 0.5 },
+        uEncode: { value: 1 }, uSparkle: { value: sparkle }, uSkyBright: { value: skyBright }, uReflGain: { value: reflGain }, uRefrDepth: { value: 0.5 },
       },
     })
   }, [wind, fetch, chl, metersPerUnit, depth, bottom, sunFrom, sunColor, lift, pool, far, at, windDeg, shore, near, sparkle, skyBright, reflGain])
@@ -278,6 +284,7 @@ export function WaterPlane({
     const bg = st.scene.background, prev = gl.getRenderTarget(), prevPlanes = gl.clippingPlanes
     gl.getClearColor(rt.clearC); const prevA = gl.getClearAlpha()
     st.scene.background = null
+    mat.uniforms.uEncode.value = 0
     gl.setClearColor(0x000000, 0)
     const wy = y
     if (reflect) {
@@ -301,6 +308,7 @@ export function WaterPlane({
       mat.uniforms.uRefr.value = rt.refr.texture; mat.uniforms.uUseRefr.value = 1
     }
     gl.clippingPlanes = prevPlanes
+    mat.uniforms.uEncode.value = 1
     gl.setRenderTarget(prev); gl.setClearColor(rt.clearC, prevA)
     st.scene.background = bg
     hidden.forEach((o) => (o.visible = true))
