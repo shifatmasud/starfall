@@ -13,7 +13,7 @@ const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=sw
 const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 })
 page.on('pageerror', (e) => console.log('ERR', e.message))
 page.on('console', (m) => { if (m.type() === 'error') console.log('CERR', m.text()) })
-await page.goto(`http://127.0.0.1:${PORT}/?scene=1&qa=1`, { waitUntil: 'load' })
+await page.goto(`http://127.0.0.1:${PORT}/?scene=${process.env.SCENE ?? 1}&qa=1`, { waitUntil: 'load' })
 await page.waitForFunction(() => (window.__ORB_FRAME__ ?? 0) > 3, null, { timeout: 120000 }).catch(() => console.log('no frames'))
 
 // a slow S-stroke across the lower half: the trail's brush, push, curl and fringe all engage
