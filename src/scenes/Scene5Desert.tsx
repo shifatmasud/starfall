@@ -54,9 +54,9 @@ export function Scene5Desert() {
     >
       <WaterPlane far={2.6} at={[-0.8, -5.4]} y={0.015} wind={2.5} fetch={300} chl={0.03} metersPerUnit={0.6} depth={1.6} sunFrom={[-5, 7, -2]} sunColor="#ffe6c2" lift={0.8} skyBright={0} />
       <ScanPalm height={3.0} position={[-3.0, 0, -7.0]} yaw={0.4} />
-      <ScanPalm height={2.5} position={[-1.8, 0, -8.0]} yaw={1.7} fronds={8} />
-      <ScanPalm height={2.2} position={[2.0, 0, -9.0]} yaw={0.9} fronds={8} />
-      <ScanPalm height={1.9} position={[3.4, 0, -7.0]} yaw={2.4} fronds={7} />
+      <ScanPalm height={2.5} position={[-1.8, 0, -8.0]} yaw={1.7} variant={1} />
+      <ScanPalm height={2.2} position={[2.0, 0, -9.0]} yaw={0.9} variant={2} />
+      <ScanPalm height={1.9} position={[3.4, 0, -7.0]} yaw={2.4} variant={1} />
       <GrassMedium02Field instances={grassField()} sunFrom={[-5, 7, -2]} sunColor="#ffe6c2" sway={0.01} translucency={1.4} />
       <Fit size={2.2} position={[-1.8, 0, -5.5]} rotation={[0, 0.3, 0]}>
         <NamaqualandBoulder02 />
