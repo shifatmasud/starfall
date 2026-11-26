@@ -15,23 +15,23 @@ import { CoastRocks05 } from '../scans/models/CoastRocks05'
 export function Scene7Descent() {
   return (
     <ScanScene
-      water={{ top: '#7fdcf2', deep: '#0a4a70', fog: 0.06 }}
+      water={{ top: '#5fc8f0', deep: '#0b5a9a', fog: 0.035 }}
       sun={{ from: [1, 10, 1], color: '#bfeaff', intensity: 2.2 }}
       fill={{ sky: '#7fd0f0', ground: '#06243a', intensity: 0.9 }}
-      camera={{ position: [0, 0, 0], target: [0, -0.9, -4], fov: 55 }}
-      orb={{ position: [0.15, -1.0, -3.4], radius: 0.24 }}
+      camera={{ position: [0, 0, 0], target: [-0.2, -0.3, -4], fov: 55 }}
+      orb={{ position: [1.1, -1.1, -3.4], radius: 0.24 }}
       look={{ light: [-0.2, 1], tint: '#e8f8ff', rim: '#dff4ff', haloColor: '#9fe0ff', halo: 0.6, bend: 2.0, gain: 1.5, core: [0.15, 0.3, 0.4] }}
-      bubbles={{ dir: [-0.25, 1], len: 0.75, spread: 0.12, size: 0.012, count: 110 }}
-      rays={{ x: 0.3, y: 1.15, color: '#9fe6ff', strength: 0.35, haze: 0.5 }}
+      bubbles={{ dir: [-0.8, 0.65], len: 0.9, spread: 0.1, size: 0.016, count: 150 }}
+      rays={{ x: 0.55, y: 1.2, color: '#bff0ff', strength: 0.6, haze: 0.5 }}
       glow={{ color: '#9fe0ff', intensity: 1.2, distance: 3 }}
-      clear="#0b3c5c"
+      clear="#0b5a9a"
       poster={{ portrait: '/poster/scene7-portrait.webp', landscape: '/poster/scene7-landscape.webp' }}
       bloom={0.6}
     >
-      <Fit size={5.0} position={[0, -4.2, -7]} rotation={[0, 0.5, 0]} tint="#9fb6c0">
+      <Fit size={5.0} position={[-3.2, -3.4, -7]} rotation={[0, 0.5, 0]} tint="#9fb6c0">
         <CoastRocks05 />
       </Fit>
-      <Fit size={2.0} position={[-2.0, -3.4, -6.0]}>
+      <Fit size={2.0} position={[-4.2, -2.4, -6.0]}>
         <CoralAcropora />
       </Fit>
       <Fit size={1.6} position={[1.8, -3.5, -5.8]}>
