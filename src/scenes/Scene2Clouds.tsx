@@ -6,6 +6,7 @@ import { Sky } from './scene2/Sky'
 import { Peak } from './scene2/Peak'
 import { CloudSea } from './scene2/CloudSea'
 import { Orb } from './scan/ScanScene'
+import { SunShafts } from './scan/LensFX'
 import { at, sizeAt } from './scene2/frame'
 import { CAM_Z, layoutFor, type Layout } from './layout'
 
@@ -55,19 +56,22 @@ function Scene({ layout }: { layout: Layout }) {
       {/* one real summit out of the cloud sea, mid-distance on the right: the Matterhorn's own DEM */}
       <Peak aspect={layout.aspect} u={0.862} v={0.345} z={-28} size={8.2} yaw={0.5} />
 
-      <CloudSea layout={layout} layer="back" renderOrder={-2} />
+      <CloudSea layout={layout} layer="back" renderOrder={-2} sss={0.045} reach={0.2} soft={0.6} />
       {/* the glass meteor, low right of centre, its wake running up-left for a third of the frame */}
       <Orb
         orb={{ position: at(0.53, 0.56, -6, layout.aspect), radius: sizeAt(0.064, 0, -6, layout.aspect)[0] / 2 }}
-        streak={{ dir: [-0.33 * layout.aspect, 0.23], len: Math.hypot(0.33 * layout.aspect, 0.23), width: 0.05, color: '#ffe6bc', strength: 2.0 }}
-        look={{ light: [-0.25, 0.9], tint: '#f6f2ff', rim: '#fff4e2', haloColor: '#ffe6c0', halo: 0.45, gain: 1.08 }}
+        streak={{ dir: [-0.33 * layout.aspect, 0.23], len: 1.3 * Math.hypot(0.33 * layout.aspect, 0.23), width: 0.04, color: '#fff3de', strength: 3.6 }}
+        look={{ light: [-0.25, 0.9], tint: '#f6f2ff', rim: '#fff4e2', haloColor: '#ffe6c0', halo: 0.7, gain: 1.45 }}
         glow={{ color: '#ffdcb0', intensity: 4, distance: 10 }}
       />
-      <CloudSea layout={layout} layer="front" renderOrder={2} />
+      <CloudSea layout={layout} layer="front" renderOrder={2} sss={0.07} reach={0.4} soft={0.5} />
+
+      {/* god rays: the low sun's light fanning down through the cloud tops */}
+      <SunShafts x={layout.sun.x} y={1 - layout.sun.y} color="#ffe4bc" strength={0.09} haze={0.08} reach={1.2} />
 
       <FrameProbe />
       <Rig layout={layout} />
-      {new URLSearchParams(location.search).has('nopost') ? null : <PostFX bloom={0.7} exposure={1.0} haze={0.35} soften={{ amount: 0.55, radius: 3.5, mist: 0.06 }} />}
+      {new URLSearchParams(location.search).has('nopost') ? null : <PostFX bloom={0.55} exposure={1.0} haze={0.22} soften={{ amount: 0.55, radius: 3.5, mist: 0.06 }} />}
     </>
   )
 }
