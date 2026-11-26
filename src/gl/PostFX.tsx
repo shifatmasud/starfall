@@ -138,7 +138,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
   if (weight < 0.0025) {
     // nothing painted here: the frame is untouched, to the pixel
-    outputColor = vec4(inputColor.rgb, inputColor.a);
+    outputColor = vec4(inputColor.rgb, 1.0);
     return;
   }
 
@@ -172,18 +172,18 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   col.g = texture(inputBuffer, uv + off).g;
   col.b = texture(inputBuffer, uv + off * (1.0 - dispersion)).b;
 
-  // liquid glass: a thin silver crest where the surface is steepest, a cool sheen inside the bead,
-  // and the faint pastel fringe the reference's wake carries where the film is thinnest
+  // liquid glass, lit only by what is behind it. Every highlight is a gain on the refracted frame,
+  // never light added on top of it: an additive sheen reads as a milky white smear over a dark sky
+  // (the old crest/bead/thin-film terms), so over black the wake stays black and over cloud it
+  // brightens the cloud. The gain is capped so the crest never blows out to flat white.
   float crest = smoothstep(0.004, 0.07, tilt) * weight;
-  col += vec3(0.74, 0.84, 1.0) * crest * 0.16 * uTrailShade;
-  col += vec3(0.60, 0.74, 1.0) * bead * 0.055 * uTrailShade;
-  col += vec3(0.86, 0.90, 1.0) * weight * 0.015 * uTrailShade;
-  float film = weight * 1.4 + (data.x - data.y) * 0.9 + slope.x * 3.0;
-  vec3 iridescence = 0.5 + 0.5 * cos(6.28318 * (film + vec3(0.0, 0.33, 0.67)));
-  float thinFilm = smoothstep(0.03, 0.12, weight) * (1.0 - smoothstep(0.32, 0.66, weight));
-  col += (iridescence - 0.5) * thinFilm * 0.02 * uTrailShade;
+  float gain = 1.0 + (crest * 0.10 + bead * 0.04) * uTrailShade;
+  col *= gain;
+  // the refracted frame can never be brighter than the brightest pixel the taps crossed
+  vec3 cap = max(inputColor.rgb, texture(inputBuffer, uv + off).rgb) * 1.08 + 0.004;
+  col = min(col, cap);
 
-  outputColor = vec4(clamp(col, 0.0, 1.0), inputColor.a);
+  outputColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
 `
 
@@ -203,7 +203,8 @@ class FinalEffect extends Effect {
 class DistortEffect extends Effect {
   constructor(trail: THREE.Texture, texel: THREE.Vector2) {
     super('DistortEffect', DistortShader, {
-      blendFunction: BlendFunction.NORMAL,
+      // SRC: the pass owns the pixel; NORMAL mixed the lens over the frame by the buffer's alpha
+      blendFunction: BlendFunction.SRC,
       uniforms: new Map<string, THREE.Uniform>([
         ['tTrail', new THREE.Uniform(trail)],
         ['uTrailTexel', new THREE.Uniform(texel.clone())],
@@ -212,7 +213,7 @@ class DistortEffect extends Effect {
         ['uZoom', new THREE.Uniform(0.22)],
         ['uTrailAmount', new THREE.Uniform(0.18)],
         ['uTrailShade', new THREE.Uniform(1.0)],
-        ['uTrailRGBShift', new THREE.Uniform(0.30)],
+        ['uTrailRGBShift', new THREE.Uniform(0.18)],
       ]),
     })
   }
