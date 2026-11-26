@@ -4,6 +4,8 @@ import * as THREE from 'three'
 import type { Layout } from '../layout'
 import { at, sizeAt } from './frame'
 import { caps } from '../../gl/capabilities'
+import { useFrame } from '@react-three/fiber'
+import { cloudLightMaterial } from './CloudLightMaterial'
 
 /**
  * The sea of cumulus — `@react-three/drei`'s `<Clouds>` / `<Cloud>`, the PMNDRS R3F example, with no
@@ -55,20 +57,20 @@ const BANDS: Band[] = [
   { key: 'far-2', layer: 'back', u0: 0.30, u1: 1.25, v0: 0.345, v1: 0.450, z: -30, billows: 9, body: 14, height: 0.85, puff: 0.34, low: '#9a98ba', mid: '#e9e2e4', high: '#fff2e0', opacity: 0.80, seed: 19, fade: 4 },
 
   // the towering bank on the left, near enough that it rises over the horizon into the sky: sunlit cream, as on panel 2
-  { key: 'tower', layer: 'back', u0: -0.30, u1: 0.20, v0: 0.000, v1: 0.520, z: -16, billows: 4, body: 18, height: 0.95, puff: 0.40, low: '#c6b8bc', mid: '#f1e5d8', high: '#fff2de', opacity: 0.93, seed: 29, fade: 4 },
+  { key: 'tower', layer: 'back', u0: -0.30, u1: 0.24, v0: -0.200, v1: 0.540, z: -16, billows: 5, body: 20, height: 1.0, puff: 0.42, low: '#c4c0d6', mid: '#f7f1ec', high: '#fffaf0', opacity: 0.93, seed: 29, fade: 4 },
   { key: 'wisp', layer: 'back', u0: 0.12, u1: 0.42, v0: 0.010, v1: 0.130, z: -26, billows: 3, body: 10, height: 0.8, puff: 0.32, low: '#b3abbe', mid: '#f0e8e4', high: '#fff3e6', opacity: 0.32, seed: 31, fade: 4 },
 
   // the middle distance, where the sun pours in
-  { key: 'mid-1', layer: 'back', u0: 0.05, u1: 0.62, v0: 0.330, v1: 0.500, z: -22, billows: 6, body: 16, height: 0.78, puff: 0.34, low: '#8b8bad', mid: '#e6dcd8', high: '#fff0dc', opacity: 0.86, seed: 37, fade: 4 },
-  { key: 'mid-2', layer: 'back', u0: 0.55, u1: 1.25, v0: 0.400, v1: 0.560, z: -19, billows: 6, body: 16, height: 0.78, puff: 0.34, low: '#7d80a8', mid: '#dfe0ea', high: '#fdf3e8', opacity: 0.88, seed: 41, fade: 4 },
-  { key: 'mid-3', layer: 'back', u0: -0.15, u1: 0.70, v0: 0.480, v1: 0.700, z: -13, billows: 6, body: 18, height: 0.80, puff: 0.36, low: '#485080', mid: '#828fb2', high: '#c6c9d8', opacity: 0.92, seed: 53, fade: 4 },
+  { key: 'mid-1', layer: 'back', u0: 0.05, u1: 0.62, v0: 0.330, v1: 0.500, z: -22, billows: 6, body: 16, height: 0.78, puff: 0.34, low: '#9c9fc4', mid: '#f1ece8', high: '#fff8ee', opacity: 0.86, seed: 37, fade: 4 },
+  { key: 'mid-2', layer: 'back', u0: 0.55, u1: 1.25, v0: 0.400, v1: 0.560, z: -19, billows: 6, body: 16, height: 0.78, puff: 0.34, low: '#9396c0', mid: '#eceef4', high: '#fffaf2', opacity: 0.88, seed: 41, fade: 4 },
+  { key: 'mid-3', layer: 'back', u0: -0.15, u1: 0.70, v0: 0.480, v1: 0.700, z: -13, billows: 6, body: 18, height: 0.80, puff: 0.36, low: '#525a8a', mid: '#8a96b8', high: '#cfd1df', opacity: 0.92, seed: 53, fade: 4 },
 
   // the shadowed trough under the orb and the bright banks that close the bottom corners
-  { key: 'near-1', layer: 'front', u0: -0.30, u1: 0.55, v0: 0.640, v1: 0.860, z: -5.2, billows: 5, body: 22, height: 0.82, puff: 0.36, low: '#434a78', mid: '#7c88ad', high: '#c2c5d6', opacity: 0.93, seed: 67, fade: 4 },
-  { key: 'near-2', layer: 'front', u0: 0.66, u1: 1.30, v0: 0.560, v1: 0.800, z: -5.0, billows: 4, body: 22, height: 0.86, puff: 0.38, low: '#7f7d9e', mid: '#e0dce0', high: '#fff2e2', opacity: 0.94, seed: 71, fade: 4 },
-  { key: 'front-1', layer: 'front', u0: -0.40, u1: 0.28, v0: 0.800, v1: 1.150, z: -3.6, billows: 3, body: 26, height: 0.90, puff: 0.40, low: '#8a83a0', mid: '#eee4d9', high: '#fff2df', opacity: 0.96, seed: 83, fade: 3 },
-  { key: 'front-2', layer: 'front', u0: 0.62, u1: 1.40, v0: 0.740, v1: 1.150, z: -3.4, billows: 3, body: 26, height: 0.92, puff: 0.40, low: '#8a83a0', mid: '#efe5db', high: '#fff2e0', opacity: 0.96, seed: 97, fade: 3 },
-  { key: 'front-3', layer: 'front', u0: 0.18, u1: 0.78, v0: 0.860, v1: 1.200, z: -3.0, billows: 3, body: 24, height: 0.92, puff: 0.40, low: '#3f4670', mid: '#7d88aa', high: '#c0c2d2', opacity: 0.95, seed: 101, fade: 3 },
+  { key: 'near-1', layer: 'front', u0: -0.30, u1: 0.55, v0: 0.640, v1: 0.860, z: -5.2, billows: 5, body: 22, height: 0.82, puff: 0.36, low: '#4c5482', mid: '#8490b4', high: '#cdd0de', opacity: 0.93, seed: 67, fade: 4 },
+  { key: 'near-2', layer: 'front', u0: 0.66, u1: 1.30, v0: 0.560, v1: 0.800, z: -5.0, billows: 4, body: 22, height: 0.86, puff: 0.38, low: '#9a9ac0', mid: '#f0eef0', high: '#fffaf2', opacity: 0.94, seed: 71, fade: 4 },
+  { key: 'front-1', layer: 'front', u0: -0.40, u1: 0.28, v0: 0.800, v1: 1.150, z: -3.6, billows: 3, body: 26, height: 0.90, puff: 0.40, low: '#a19fc2', mid: '#f6f0ea', high: '#fffaf2', opacity: 0.96, seed: 83, fade: 3 },
+  { key: 'front-2', layer: 'front', u0: 0.62, u1: 1.40, v0: 0.740, v1: 1.150, z: -3.4, billows: 3, body: 26, height: 0.92, puff: 0.40, low: '#a19fc2', mid: '#f6f0ea', high: '#fffaf2', opacity: 0.96, seed: 97, fade: 3 },
+  { key: 'front-3', layer: 'front', u0: 0.18, u1: 0.78, v0: 0.860, v1: 1.200, z: -3.0, billows: 3, body: 24, height: 0.92, puff: 0.40, low: '#4a5180', mid: '#8590b0', high: '#cacbd9', opacity: 0.95, seed: 101, fade: 3 },
 ]
 
 const hash = (n: number) => {
@@ -127,8 +129,45 @@ function billowsOf(band: Band, aspect: number, small: boolean): Billow[] {
   return out
 }
 
-export function CloudSea({ layout, layer, renderOrder }: { layout: Layout; layer: 'back' | 'front'; renderOrder: number }) {
+export function CloudSea({
+  layout,
+  layer,
+  renderOrder,
+  sss = 0.5,
+  reach = 0.5,
+  soft = 0.6,
+}: {
+  layout: Layout
+  layer: 'back' | 'front'
+  renderOrder: number
+  /** light through the cloud (subsurface scattering) */
+  sss?: number
+  reach?: number
+  soft?: number
+}) {
   const aspect = layout.aspect
+  // one light-through-cloud material per layer, fixed for the provider's life (drei subclasses it)
+  const light = useMemo(
+    () =>
+      cloudLightMaterial({
+        sun: new THREE.Vector2(layout.sun.x, layout.sun.y),
+        sunColor: new THREE.Color('#ffd9a6'),
+        sss,
+        reach,
+        soft,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+  useEffect(() => {
+    light.uniforms.uSun.value.set(layout.sun.x, layout.sun.y)
+    light.uniforms.uSss.value = sss
+    light.uniforms.uReach.value = reach
+    light.uniforms.uSoft.value = soft
+  }, [light, layout.sun.x, layout.sun.y, sss, reach, soft])
+  useFrame((state) => {
+    state.gl.getDrawingBufferSize(light.uniforms.uRes.value)
+  })
   const device = useMemo(() => caps(), [])
   const small = device.lowTier
 
@@ -151,7 +190,7 @@ export function CloudSea({ layout, layer, renderOrder }: { layout: Layout; layer
 
   return (
     <Suspense fallback={null}>
-      <Clouds ref={group} texture={small ? PUFF_SM : PUFF} limit={limit} frustumCulled={false}>
+      <Clouds ref={group} material={light.Material} texture={small ? PUFF_SM : PUFF} limit={limit} frustumCulled={false}>
         {billows.map((b) => {
           const [bx, by, bz] = b.bounds
           const n = b.body
