@@ -36,7 +36,7 @@ export function Scene5Desert() {
       haze={0.4}
       soften={{ amount: 0.3, radius: 3, mist: 0.18 }}
     >
-      <WaterPlane far={2.6} at={[-0.8, -5.4]} y={0.015} wind={2.5} fetch={300} chl={0.03} metersPerUnit={0.6} depth={1.6} sunFrom={[-5, 7, -2]} sunColor="#ffe6c2" lift={2.6} />
+      <WaterPlane far={2.6} at={[-0.8, -5.4]} y={0.015} wind={2.5} fetch={300} chl={0.03} metersPerUnit={0.6} depth={1.6} sunFrom={[-5, 7, -2]} sunColor="#ffe6c2" lift={0.8} skyBright={0} />
       <ScanPalm height={3.0} position={[-3.0, 0, -7.0]} yaw={0.4} />
       <ScanPalm height={2.5} position={[-1.8, 0, -8.0]} yaw={1.7} fronds={8} />
       <ScanPalm height={2.2} position={[2.0, 0, -9.0]} yaw={0.9} fronds={8} />

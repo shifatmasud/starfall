@@ -41,7 +41,7 @@ export function Scene6Ice() {
       haze={0.35}
       soften={{ amount: 0.25, radius: 3, mist: 0.12 }}
     >
-      <WaterPlane near={0} y={0.0} wind={6} fetch={30000} chl={0.3} metersPerUnit={2.5} sunFrom={[9, 2.4, -8]} sunColor="#fff6e6" lift={8} sparkle={1.6} skyBright={0.7} reflGain={1.3} />
+      <WaterPlane near={0} y={0.0} wind={6} fetch={30000} chl={0.3} metersPerUnit={2.5} sunFrom={[9, 2.4, -8]} sunColor="#fff6e6" lift={2.5} sparkle={1.6} skyBright={0.7} reflGain={1.3} />
       {BERGS.map(([x, z, s, r], i) => (
         <Fit key={i} size={s} position={[x, -0.05, z]} rotation={[0, r, 0]} tint="#ffffff" emissive={['#d8ecfa', 0.6]} roughness={0.3} sss={ICE} stretch={0.8}>
           <NamaqualandBoulder02 />
