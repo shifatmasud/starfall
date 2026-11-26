@@ -59,7 +59,7 @@ function Scene({ layout }: { layout: Layout }) {
       {/* the glass meteor, low right of centre, its wake running up-left for a third of the frame */}
       <Orb
         orb={{ position: at(0.53, 0.56, -6, layout.aspect), radius: sizeAt(0.064, 0, -6, layout.aspect)[0] / 2 }}
-        streak={{ dir: [-0.33 * layout.aspect, 0.23], len: Math.hypot(0.33 * layout.aspect, 0.23), width: 0.03, color: '#ffe2b0', strength: 1.25 }}
+        streak={{ dir: [-0.33 * layout.aspect, 0.23], len: Math.hypot(0.33 * layout.aspect, 0.23), width: 0.05, color: '#ffe6bc', strength: 2.0 }}
         look={{ light: [-0.25, 0.9], tint: '#f6f2ff', rim: '#fff4e2', haloColor: '#ffe6c0', halo: 0.45, gain: 1.08 }}
         glow={{ color: '#ffdcb0', intensity: 4, distance: 10 }}
       />
