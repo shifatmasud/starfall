@@ -1,3 +1,4 @@
 [
-  { "id": "flower_heliophila", "res": "1k", "mesh": "Plane.2197", "ratio": 0.035, "tex": 128, "out": "flower_heliophila" }
+  { "id": "flower_heliophila", "res": "1k", "mesh": "Plane.2197", "ratio": 0.035, "tex": 128, "out": "flower_heliophila" },
+  { "id": "fir_tree_01", "res": "1k", "mesh": "NurbsPath.001", "materials": ["fir_tree_01_trunk_a", "fir_tree_01_dead_branches"], "ratio": 0.2, "tex": 512, "out": "fir_trunk" }
 ]

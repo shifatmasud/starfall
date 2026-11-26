@@ -21,6 +21,7 @@ const force = process.argv.includes('--force')
 await MeshoptEncoder.ready
 
 async function fetchTo(url, path) {
+  if (existsSync(path)) return // sources are big (fir_tree_01 is ~480 MB): fetch once
   const r = await fetch(url)
   if (!r.ok) throw new Error(`${r.status} ${url}`)
   mkdirSync(dirname(path), { recursive: true })
@@ -41,6 +42,10 @@ for (const e of manifest) {
   const doc = await io.read(main)
   const root = doc.getRoot()
   if (e.mesh) for (const n of root.listNodes()) { const m = n.getMesh(); if (m && m.getName() !== e.mesh) n.dispose() }
+  // keep only the parts made of the named materials (a tree's trunk without its million twigs)
+  if (e.materials) for (const m of root.listMeshes()) for (const p of m.listPrimitives()) {
+    if (!e.materials.includes(p.getMaterial()?.getName())) { m.removePrimitive(p); p.dispose() }
+  }
   for (const mat of root.listMaterials()) {
     mat.setNormalTexture(null)
     mat.setOcclusionTexture(null)
