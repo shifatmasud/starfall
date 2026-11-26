@@ -10,21 +10,27 @@ import type { RGB } from '../../physics/optics'
  * absorption through the body thickness by Beer–Lambert). Added to the direct diffuse light of the
  * first directional light (the scene's sun).
  */
-export type SSS = { color: RGB; strength: number; power?: number; distortion?: number }
+export type SSS = { color: RGB; strength: number; power?: number; distortion?: number; /** sky light transmitted through thin edges, × strength */ ambient?: number }
 
 export function applySSS(mat: THREE.Material, sss: SSS) {
   const m = mat as THREE.MeshStandardMaterial
-  const key = `sss-${sss.color.join(',')}-${sss.strength}-${sss.power ?? 3}-${sss.distortion ?? 0.3}`
+  const key = `sss-${sss.color.join(',')}-${sss.strength}-${sss.power ?? 3}-${sss.distortion ?? 0.3}-${sss.ambient ?? 0}`
   m.onBeforeCompile = (shader) => {
     shader.uniforms.uSssCol = { value: new THREE.Vector3(...sss.color) }
     shader.uniforms.uSssStr = { value: sss.strength }
     shader.uniforms.uSssPow = { value: sss.power ?? 3 }
     shader.uniforms.uSssDist = { value: sss.distortion ?? 0.3 }
+    shader.uniforms.uSssAmb = { value: sss.ambient ?? 0 }
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uSssCol; uniform float uSssStr; uniform float uSssPow; uniform float uSssDist;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 uSssCol; uniform float uSssStr; uniform float uSssPow; uniform float uSssDist; uniform float uSssAmb;')
       .replace(
         '#include <lights_fragment_end>',
         `#include <lights_fragment_end>
+{
+  // diffuse sky light that leaves through thin edges and thin ice: stronger where the surface turns from the eye
+  float thin = pow(1.0 - saturate(dot(geometryNormal, geometryViewDir)), 1.5);
+  reflectedLight.indirectDiffuse += uSssCol * iblIrradiance * uSssAmb * (0.35 + 1.2 * thin);
+}
 #if NUM_DIR_LIGHTS > 0
 {
   vec3 Ls = directionalLights[0].direction;
