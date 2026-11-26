@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { A_WATER, F0_WATER, IOR_WATER, JERLOV, coxMunkMss, kd, rrs, waterIOPs, waveSet } from '../../physics/optics'
 
@@ -17,7 +17,8 @@ import { A_WATER, F0_WATER, IOR_WATER, JERLOV, coxMunkMss, kd, rrs, waterIOPs, w
  *  SSS          sunlight forward-scattered through thin wave crests: Henyey–Greenstein with Petzold's g = 0.924,
  *               Beer–Lambert transmittance with the real absorption spectrum, so crests glow turquoise
  *
- * No screen-space reflection: the water mirrors the sky only (not the scans on it) — stated in the report.
+ * Scans: a planar reflection pass (mirrored camera, scans only) and a refraction pass (submerged parts of the scans, shifted
+ * by the wave normal, Beer–Lambert absorbed) feed the shader; the photographed sky is still mirrored analytically.
  */
 export type WaterProps = {
   /** wind speed, m/s (real: 3 = light breeze, 5 = gentle, 8 = fresh) */
@@ -41,6 +42,18 @@ export type WaterProps = {
   at?: [number, number]
   y?: number
   windDeg?: number
+  /** mirror the scans on the water (planar reflection pass, scans only) */
+  reflect?: boolean
+  /** refract the submerged part of the scans through the waves (distorted, absorbed) */
+  refract?: boolean
+  /** shallow shore: width (scene units) over which depth grows from 5 cm to `depth` outward from `near` */
+  shore?: number
+  /** sun-glitter strength (stochastic Cox–Munk facets) */
+  sparkle?: number
+  /** blend of the reflected sky toward a clear-sky gradient (0 keeps the photographed horizon) */
+  skyBright?: number
+  /** brightness of the reflected sky, painterly */
+  reflGain?: number
 }
 
 const VERT = /* glsl */ `
@@ -61,6 +74,8 @@ uniform vec4 uWaves[${N_WAVES}];   // k, omega, amplitude, phase
 uniform vec2 uDirs[${N_WAVES}];
 uniform float uTime, uMpu, uMss, uLift, uDepth, uPool, uPoolR, uF0, uIor, uAmpSum;
 uniform vec2 uPoolC;
+uniform sampler2D uRefl, uRefr; uniform mat4 uReflVP, uMainVP; uniform float uUseRefl, uUseRefr, uShore, uNear, uSparkle, uSkyBright, uReflGain, uRefrDepth;
+uniform vec2 uAt;
 uniform vec3 uA, uBb, uB, uRinf, uKd, uBottom, uSunDir, uSunCol, uAWater;
 const float PI = 3.14159265;
 vec3 sky(vec3 d, float lod){
@@ -76,6 +91,7 @@ float fresnel(float c, float n){           // exact unpolarised Fresnel, air -> 
   float rp = (n*c - ct) / (n*c + ct);
   return 0.5 * (rs*rs + rp*rp);
 }
+vec2 hash22(vec2 p){ vec3 q = fract(vec3(p.xyx) * vec3(.1031,.1030,.0973)); q += dot(q, q.yzx + 33.33); return fract((q.xx + q.yz) * q.zy); }
 float hg(float c, float g){ return (1.0 - g*g) / (4.0*PI*pow(1.0 + g*g - 2.0*g*c, 1.5)); }
 void main(){
   vec3 toCam = cameraPosition - vW;
@@ -102,6 +118,19 @@ void main(){
   // the water also mirrors the bright horizon band through the finer ripples the footprint averages away
   vec3 Rh = normalize(vec3(R.x, 0.12 + 0.25 * R.y, R.z));
   vec3 refl = mix(sky(R, 1.0), sky(Rh, 2.0), 0.65);
+  // clear-sky gradient (Rayleigh-blue zenith, pale horizon): lifts a dark photographed horizon band
+  vec3 clearSky = mix(vec3(0.62,0.78,1.0), vec3(0.28,0.56,0.9), pow(clamp(R.y,0.,1.), 0.5)) * uReflGain;
+  refl = mix(refl, max(refl, clearSky * 0.75), uSkyBright) * uReflGain;
+  vec4 clipM = uMainVP * vec4(vW, 1.0);
+  vec2 suv = clipM.xy / clipM.w * 0.5 + 0.5;
+  if (uUseRefl > 0.5){
+    // planar reflection of the scans, distorted by the wave normal, softened with distance (mip lod)
+    vec4 rc = uReflVP * vec4(vW, 1.0);
+    vec2 ruv = rc.xy / rc.w * 0.5 + 0.5 + N.xz * 0.06 / (1.0 + dist * 0.15);
+    float inb = step(0.0, ruv.x) * step(ruv.x, 1.0) * step(0.0, ruv.y) * step(ruv.y, 1.0) * step(0.0, rc.w);
+    vec4 rr = textureLod(uRefl, clamp(ruv, 0.001, 0.999), 1.0 + clamp(dist * 0.12, 0.0, 3.0));
+    refl = mix(refl, rr.rgb, clamp(rr.a * 1.25, 0.0, 1.0) * inb);
+  }
   // sun glint: Blinn lobe with Cox–Munk slope variance
   vec3 Hh = normalize(uSunDir + V);
   float expo = 2.0 / max(uMss * 0.5, 1e-3) - 2.0;
@@ -114,6 +143,10 @@ void main(){
   if (uPool > 0.5){
     float r = length((vW.xz - uPoolC) / vec2(1.6, 1.0)) / uPoolR;
     depth = max(uDepth * (1.0 - r*r), 0.04);
+  }
+  if (uShore > 0.0){
+    float rr0 = length(vW.xz - uAt);
+    depth = max(uDepth * smoothstep(uNear, uNear + uShore, rr0), 0.05);
   }
   float caust = 1.0 / clamp(1.0 + 0.08 * depth * lap, 0.6, 1.8);
   vec3 K = uKd;
@@ -129,7 +162,31 @@ void main(){
   vec3 sss = uSunCol * ph * (1.0 - exp(-uB * thick * 1.5)) * T * crest * crest * (1.0 - F) * 3.0;
   // pure-water turquoise transmittance of the crest (Pope & Fry) lifts the body on the lit side
   sss += uSunCol * exp(-uAWater * thick * 3.0) * 0.12 * crest * crest * max(dot(N, uSunDir), 0.0) * (1.0 - F);
-  vec3 col = F * refl + (1.0 - F) * (body + sss) + uSunCol * glint * 4.0;
+  vec3 under = body + sss;
+  if (uUseRefr > 0.5){
+    vec2 quv = clamp(suv + N.xz * 0.045, 0.002, 0.998);       // Snell: the ray bends toward the normal, shifting the submerged image
+    vec4 rf = texture(uRefr, quv);
+    vec3 Tr = exp(-uKd * uRefrDepth * 2.0);                  // Beer–Lambert through the submerged part
+    vec3 sub = rf.rgb * Tr + body * 0.45 * (1.0 - Tr) + vec3(0.0, 0.03, 0.05) * rf.a;
+    under = mix(under, sub, clamp(rf.a, 0.0, 1.0) * 0.9);
+  }
+  // sun glitter: stochastic Cox–Munk facets (each sparkle is one wave facet mirroring the sun)
+  float glit = 0.0;
+  if (uSparkle > 0.0){
+    float sl = sqrt(uMss);
+    for (int o = 0; o < 2; o++){
+      float cell = (o == 0 ? 0.045 : 0.11) * (1.0 + dist * uMpu * 0.02);
+      vec2 id = floor(p / cell);
+      vec2 hr = hash22(id + float(o) * 17.0);
+      vec2 sp = (hr - 0.5) * sl * 4.0;
+      vec3 Nf = normalize(N + vec3(-sp.x, 0.0, -sp.y));
+      float d = dot(Nf, Hh);
+      float tw = 0.6 + 0.4 * sin(uTime * (2.0 + 5.0 * hr.x) + hr.y * 40.0);
+      glit += smoothstep(0.99985, 0.99999, d) * tw;
+    }
+    glit *= F * 14.0 * uSparkle * smoothstep(0.0, 0.15, uSunDir.y);
+  }
+  vec3 col = F * refl + (1.0 - F) * under + uSunCol * (glint * 4.0 + glit);
   outColor = vec4(col, 1.0);
 }`
 
@@ -148,7 +205,14 @@ export function WaterPlane({
   at = [0, 0],
   y = 0.01,
   windDeg = 25,
+  reflect = true,
+  refract = true,
+  shore = 0,
+  sparkle = 1,
+  skyBright = 0.35,
+  reflGain = 1,
 }: WaterProps) {
+  const gl = useThree((st) => st.gl)
   const scene = useThree((s) => s.scene)
   const pool = far < 100
   const geo = useMemo(() => {
@@ -177,11 +241,73 @@ export function WaterPlane({
         uA: { value: v3(iop.a) }, uB: { value: v3(iop.b) }, uBb: { value: v3(iop.bb) }, uRinf: { value: v3(rrs(chl)) }, uKd: { value: v3(kd(chl)) },
         uBottom: { value: v3(bottom) }, uSunDir: { value: sd }, uSunCol: { value: new THREE.Vector3(col.r, col.g, col.b) },
         uAWater: { value: v3(A_WATER) },
+        uRefl: { value: null }, uRefr: { value: null }, uReflVP: { value: new THREE.Matrix4() }, uMainVP: { value: new THREE.Matrix4() },
+        uUseRefl: { value: 0 }, uUseRefr: { value: 0 }, uShore: { value: shore }, uNear: { value: near }, uAt: { value: new THREE.Vector2(at[0], at[1]) },
+        uSparkle: { value: sparkle }, uSkyBright: { value: skyBright }, uReflGain: { value: reflGain }, uRefrDepth: { value: 0.5 },
       },
     })
-  }, [wind, fetch, chl, metersPerUnit, depth, bottom, sunFrom, sunColor, lift, pool, far, at, windDeg])
+  }, [wind, fetch, chl, metersPerUnit, depth, bottom, sunFrom, sunColor, lift, pool, far, at, windDeg, shore, near, sparkle, skyBright, reflGain])
+  // planar reflection + refraction targets (scans only: the photographed sky is mirrored analytically in the shader)
+  const rt = useMemo(() => {
+    const mk = () => {
+      const t = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter })
+      t.texture.colorSpace = THREE.LinearSRGBColorSpace
+      return t
+    }
+    return { refl: mk(), refr: mk(), cam: new THREE.PerspectiveCamera(), n: 0, key: '', clearC: new THREE.Color() }
+  }, [])
+  const meshRef = useRef<THREE.Mesh>(null)
+  useEffect(() => () => { rt.refl.dispose(); rt.refr.dispose() }, [rt])
+  useFrame((st) => {
+    if (!reflect && !refract) return
+    const cam = st.camera as THREE.PerspectiveCamera
+    const w = Math.max(2, Math.round(gl.domElement.width * 0.5))
+    const h = Math.max(2, Math.round(gl.domElement.height * 0.5))
+    const key = `${w}x${h}`
+    rt.n++
+    if (key !== rt.key) { rt.key = key; rt.refl.setSize(w, h); rt.refr.setSize(w, h); rt.n = 0 }
+    else if (rt.n > 12 && rt.n % 20 !== 0) return
+    const hidden: THREE.Object3D[] = []
+    st.scene.traverse((o) => {
+      const m = o as THREE.Mesh
+      if (!(m.isMesh || (o as THREE.Points).isPoints || (o as THREE.Line).isLine) || !o.visible) return
+      const mm = m.material as THREE.Material | THREE.Material[]
+      const ok = !Array.isArray(mm) && (mm as THREE.MeshStandardMaterial).isMeshStandardMaterial
+      if (!ok) { o.visible = false; hidden.push(o) }
+    })
+    const bg = st.scene.background, prev = gl.getRenderTarget(), prevPlanes = gl.clippingPlanes
+    gl.getClearColor(rt.clearC); const prevA = gl.getClearAlpha()
+    st.scene.background = null
+    gl.setClearColor(0x000000, 0)
+    const wy = y
+    if (reflect) {
+      const rc = rt.cam
+      rc.fov = cam.fov; rc.aspect = cam.aspect; rc.near = cam.near; rc.far = Math.min(cam.far, 400)
+      const fwd = cam.getWorldDirection(new THREE.Vector3())
+      rc.position.set(cam.position.x, 2 * wy - cam.position.y, cam.position.z)
+      rc.up.set(0, 1, 0)
+      rc.lookAt(rc.position.x + fwd.x, rc.position.y - fwd.y, rc.position.z + fwd.z)
+      rc.updateProjectionMatrix(); rc.updateMatrixWorld()
+      mat.uniforms.uReflVP.value.multiplyMatrices(rc.projectionMatrix, rc.matrixWorldInverse)
+      gl.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), -wy)]
+      gl.setRenderTarget(rt.refl); gl.clear()
+      gl.render(st.scene, rc)
+      mat.uniforms.uRefl.value = rt.refl.texture; mat.uniforms.uUseRefl.value = 1
+    }
+    if (refract) {
+      gl.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), wy)]
+      gl.setRenderTarget(rt.refr); gl.clear()
+      gl.render(st.scene, cam)
+      mat.uniforms.uRefr.value = rt.refr.texture; mat.uniforms.uUseRefr.value = 1
+    }
+    gl.clippingPlanes = prevPlanes
+    gl.setRenderTarget(prev); gl.setClearColor(rt.clearC, prevA)
+    st.scene.background = bg
+    hidden.forEach((o) => (o.visible = true))
+  }, -15)
   useFrame((s) => {
     const u = mat.uniforms
+    u.uMainVP.value.multiplyMatrices(s.camera.projectionMatrix, s.camera.matrixWorldInverse)
     u.uTime.value = s.clock.elapsedTime + 3
     const env = scene.environment as THREE.Texture | null
     if (env && !(env as THREE.Texture & { isCubeTexture?: boolean }).isCubeTexture) {
@@ -192,5 +318,5 @@ export function WaterPlane({
       u.uFallback.value.setScalar(k)
     }
   })
-  return <mesh geometry={geo} material={mat} position={[at[0], y, at[1]]} scale={pool ? [1.6, 1, 1] : [1, 1, 1]} renderOrder={-40} frustumCulled={false} />
+  return <mesh ref={meshRef} geometry={geo} material={mat} position={[at[0], y, at[1]]} scale={pool ? [1.6, 1, 1] : [1, 1, 1]} renderOrder={-40} frustumCulled={false} />
 }
