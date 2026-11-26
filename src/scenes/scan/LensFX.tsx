@@ -7,6 +7,7 @@ import * as THREE from 'three'
  *
  *   SunShafts  god rays fanning from the photo's sun; `reach` sets how far down the frame they carry
  *              (lower = longer shafts), so a forest panel's beams can reach the orb
+ *   SoftGlow   a wide, edgeless warm light at a screen point (the glow around an orb)
  *   Bokeh      out-of-focus foreground highlights: the soft discs a wide aperture makes of sunlit
  *              near leaves and flowers
  */
@@ -46,6 +47,40 @@ export function SunShafts({ x, y, color, strength, haze = 0.35, reach = 2.2 }: S
   useFrame((st) => {
     mat.uniforms.uAspect.value = size.width / Math.max(1, size.height)
     mat.uniforms.uTime.value = st.clock.elapsedTime
+  })
+  return (
+    <mesh material={mat} renderOrder={5} frustumCulled={false}>
+      <planeGeometry args={[2, 2]} />
+    </mesh>
+  )
+}
+
+/** A soft, wide light at a screen point (x, y in 0..1, radius in screen heights): the warm glow the
+ *  orb spills on the haze and the floor around it. Gaussian, so it has no edge. */
+export function SoftGlow({ x, y, radius, color, strength }: { x: number; y: number; radius: number; color: string; strength: number }) {
+  const size = useThree((s) => s.size)
+  const mat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        glslVersion: THREE.GLSL3,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: { uP: { value: new THREE.Vector2(x, y) }, uR: { value: radius }, uCol: { value: new THREE.Color(color) }, uS: { value: strength }, uAspect: { value: 1.5 } },
+        vertexShader: /* glsl */ `out vec2 vUv; void main(){ vUv = position.xy * 0.5 + 0.5; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+        fragmentShader: /* glsl */ `
+          precision highp float; in vec2 vUv; layout(location=0) out vec4 o; uniform vec2 uP; uniform float uR; uniform vec3 uCol; uniform float uS; uniform float uAspect;
+          void main(){
+            float r = length((vUv - uP) * vec2(uAspect, 1.0)) / uR;
+            o = vec4(uCol * uS * (exp(-r * r * 2.2) * 0.75 + exp(-r * r * 9.0) * 0.25), 1.0);
+          }`,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+  useFrame(() => {
+    mat.uniforms.uAspect.value = size.width / Math.max(1, size.height)
   })
   return (
     <mesh material={mat} renderOrder={5} frustumCulled={false}>
