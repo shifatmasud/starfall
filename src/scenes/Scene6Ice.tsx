@@ -1,6 +1,7 @@
 import { ScanScene } from './scan/ScanScene'
 import { Fit } from './scan/Fit'
 import { WaterPlane } from './scan/WaterPlane'
+import { A_ICE } from '../physics/optics'
 import { NamaqualandBoulder02 } from '../scans/models/NamaqualandBoulder02'
 
 /**
@@ -16,6 +17,9 @@ const BERGS: [number, number, number, number][] = [
   [-4.5, -10.0, 2.0, 1.9], [-1.8, -7.0, 0.5, 0.4], [1.2, -1.9, 0.3, 1.0], [-3.0, -4.5, 0.4, 2.2], [2.8, -6.0, 0.45, 0.6],
   [-0.2, -12.0, 0.9, 1.4], [6.5, -7.5, 0.7, 2.5]
 ]
+
+// ice SSS: Beer–Lambert through ~1.5 m of ice with Warren & Brandt (2008) absorption: red is absorbed first, light leaves blue
+const ICE = { color: A_ICE.map((a) => Math.exp(-a * 1.5 * 8)) as [number, number, number], strength: 1.2, power: 2 }
 
 export function Scene6Ice() {
   return (
@@ -37,9 +41,9 @@ export function Scene6Ice() {
       haze={0.35}
       soften={{ amount: 0.25, radius: 3, mist: 0.12 }}
     >
-      <WaterPlane color="#5aa8ea" near={0} y={0.0} roughness={0.14} />
+      <WaterPlane near={0} y={0.0} wind={6} fetch={30000} chl={0.3} metersPerUnit={2.5} sunFrom={[2, 9, 4]} sunColor="#f4f8ff" lift={4.5} />
       {BERGS.map(([x, z, s, r], i) => (
-        <Fit key={i} size={s} position={[x, -0.05, z]} rotation={[0, r, 0]} tint="#ffffff" emissive={['#d8ecfa', 0.6]} roughness={0.3} stretch={0.8}>
+        <Fit key={i} size={s} position={[x, -0.05, z]} rotation={[0, r, 0]} tint="#ffffff" emissive={['#d8ecfa', 0.6]} roughness={0.3} sss={ICE} stretch={0.8}>
           <NamaqualandBoulder02 />
         </Fit>
       ))}

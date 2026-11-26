@@ -32,7 +32,7 @@ export function Scene4Lake() {
       poster={{ portrait: '/poster/scene4-portrait.webp', landscape: '/poster/scene4-landscape.webp' }}
       bloom={0.45}
     >
-      <WaterPlane color="#6f9fc0" near={9} y={0.02} roughness={0.06} />
+      <WaterPlane near={3.5} y={0.02} wind={3} fetch={8000} chl={0.3} metersPerUnit={1.5} sunFrom={[4, 6, -3]} sunColor="#fff2dc" lift={2.4} />
       {GRASS.map(([x, z, s], i) => (
         <Fit key={i} size={s} position={[x, 0, z]} rotation={[0, i * 1.7, 0]}>
           <GrassMedium01 />
