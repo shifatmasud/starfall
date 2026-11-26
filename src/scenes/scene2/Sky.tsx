@@ -56,18 +56,20 @@ float fbm(vec2 p, int oct) {
 
 void main() {
   vec2 uv = vec2(vUv.x, 1.0 - vUv.y);              // y down, like the plate
+  // the gradient was authored for a horizon at 0.52; squeeze it onto wherever the horizon is
+  float gy = uv.y * 0.52 / uHorizon;
 
   // ---- the gradient: saturated blue overhead, cooling through lilac, to warm pale gold at the horizon
-  vec3 col = mix(vec3(0.035, 0.180, 0.470), vec3(0.080, 0.290, 0.620), smoothstep(0.0, 0.16, uv.y));
-  col = mix(col, vec3(0.230, 0.450, 0.720), smoothstep(0.13, 0.30, uv.y));
-  col = mix(col, vec3(0.610, 0.700, 0.820), smoothstep(0.26, 0.42, uv.y));
-  col = mix(col, vec3(0.930, 0.855, 0.780), smoothstep(0.40, uHorizon + 0.04, uv.y));
+  vec3 col = mix(vec3(0.035, 0.180, 0.470), vec3(0.080, 0.290, 0.620), smoothstep(0.0, 0.16, gy));
+  col = mix(col, vec3(0.230, 0.450, 0.720), smoothstep(0.13, 0.30, gy));
+  col = mix(col, vec3(0.610, 0.700, 0.820), smoothstep(0.26, 0.42, gy));
+  col = mix(col, vec3(0.930, 0.855, 0.780), smoothstep(0.40, 0.56, gy));
 
   // a warm wash on the sun's side, wide enough to be light rather than a lamp
   vec2 sp = (uv - uSun) * vec2(uAspect, 1.0);
   float r = length(sp);
   float wash = exp(-r * 3.4);
-  col += vec3(1.0, 0.83, 0.60) * wash * 0.30;
+  col += vec3(1.0, 0.80, 0.52) * wash * 0.48;
   col = mix(col, vec3(1.0, 0.90, 0.76), smoothstep(0.20, 0.015, r) * 0.26);
 
   // ---- high cirrus: two veils stretched by the wind, lit warm where they face the sun
@@ -87,7 +89,7 @@ void main() {
   col = mix(col, vec3(1.0, 0.985, 0.955), disc);
   col += vec3(1.0, 0.97, 0.90) * exp(-r * 52.0) * 0.95;
   col += vec3(1.0, 0.92, 0.80) * exp(-r * 17.0) * 0.34;
-  col += vec3(1.0, 0.86, 0.68) * exp(-r * 6.0) * 0.13;
+  col += vec3(1.0, 0.84, 0.62) * exp(-r * 6.0) * 0.22;
 
   // ---- sunbeams: not a star filter, only the soft radial structure of light through thin haze
   float ang = atan(sp.y, sp.x);
@@ -99,7 +101,7 @@ void main() {
   float haze = 1.0 - smoothstep(0.02, 0.42, length((uv - uSun) * vec2(uAspect * 0.75, 1.0)));
   col = mix(col, vec3(1.0, 0.94, 0.86), haze * 0.10);
   float band = smoothstep(uHorizon - 0.18, uHorizon, uv.y) * (1.0 - smoothstep(uHorizon - 0.01, uHorizon + 0.06, uv.y));
-  col = mix(col, vec3(1.0, 0.95, 0.88), band * 0.22 * (0.45 + 0.55 * haze));
+  col = mix(col, vec3(1.0, 0.90, 0.74), band * 0.34 * (0.45 + 0.55 * haze));
 
   // the corners fall away a touch, as a long lens does
   vec2 lens = (uv - 0.5) * vec2(1.0, 1.15);
@@ -142,7 +144,7 @@ export function Sky({ layout }: { layout: Layout }) {
     () => ({
       uSun: { value: new THREE.Vector2(0.47, 0.16) },
       uAspect: { value: 1.6 },
-      uHorizon: { value: 0.52 },
+      uHorizon: { value: 0.37 },
     }),
     [],
   )
