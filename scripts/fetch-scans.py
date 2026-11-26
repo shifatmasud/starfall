@@ -29,7 +29,7 @@ TMP = '/tmp/starfall-scans'
 GT = os.environ.get('GLTF_TRANSFORM', 'gltf-transform')
 UA = {'User-Agent': 'Mozilla/5.0 starfall-asset-fetch'}
 
-HDRIS = ['forest_slope', 'alps_field', 'goegap', 'white_cliff_top']
+HDRIS = ['forest_slope', 'alps_field', 'goegap', 'passendorf_snow']
 
 # Poly Haven model id -> simplify ratio (fraction of triangles kept)
 PH_MODELS = {
