@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import * as THREE from 'three'
+import { applySSS, type SSS } from './sss'
 
 /**
  * Places a scan by real size: scales its children so the largest side of their bounding box is
@@ -14,6 +15,7 @@ export function Fit({
   tint,
   emissive,
   roughness,
+  sss,
   stretch = 1,
   children,
 }: {
@@ -23,6 +25,8 @@ export function Fit({
   tint?: string
   emissive?: [string, number]
   roughness?: number
+  /** translucency (leaves, ice): see sss.ts */
+  sss?: SSS
   /** extra vertical stretch after fitting (a slab of rock stood up into a berg) */
   stretch?: number
   children: ReactNode
@@ -41,7 +45,7 @@ export function Fit({
     const c = box.getCenter(new THREE.Vector3())
     g.scale.set(s, s * stretch, s)
     g.position.set(-c.x * s, -box.min.y * s * stretch, -c.z * s)
-    if (tint || emissive || roughness !== undefined) {
+    if (tint || emissive || roughness !== undefined || sss) {
       g.traverse((o) => {
         const m = o as THREE.Mesh
         if (!m.isMesh) return
@@ -52,6 +56,7 @@ export function Fit({
           mat.emissiveIntensity = emissive[1]
         }
         if (roughness !== undefined) mat.roughness = roughness
+        if (sss) applySSS(mat, sss)
         m.material = mat
       })
     }
