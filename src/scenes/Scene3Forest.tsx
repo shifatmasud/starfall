@@ -7,15 +7,17 @@ import { GrassMedium01 } from '../scans/models/GrassMedium01'
 import { Fit } from './scan/Fit'
 import { SunShafts, Bokeh } from './scan/LensFX'
 import { FlowerHeliophila } from '../scans/models/FlowerHeliophila'
+import { FirTrunk } from '../scans/models/FirTrunk'
 
 /**
  * Scene 3 — Forest. The orb rests on a sunlit, mossy forest floor.
  *
  * World: Poly Haven `forest_slope` (a photographed forest, sun through the trees), ground-projected
  * so its own leaf-litter floor runs under the orb. Props, all photogrammetry scans: moss-covered
- * rocks, a tree stump and a root cluster framing the right like the reference's great trunk, ferns,
+ * rocks, a scanned fir trunk closing the right of the frame like the reference's great trunk, a tree
+ * stump and a root cluster at its foot, ferns,
  * grass tufts, and the small white flowers of a scanned Heliophila scattered through the foreground.
- * The sun sits high left, its shafts (LensFX SunShafts) reaching down to the orb; out-of-focus
+ * The sun sits high, a little left of centre, its shafts (LensFX SunShafts) reaching down to the orb; out-of-focus
  * highlights (LensFX Bokeh) sit in the foreground, bottom right, as in the reference.
  */
 
@@ -48,17 +50,21 @@ export function Scene3Forest() {
       hdri="/scans/hdri/forest_slope.webp"
       ground={{ height: 1.6, radius: 40 }}
       envIntensity={1.6}
-      skyYaw={90}
+      skyYaw={78}
       sun={{ from: [-3, 4, -4], color: '#ffe0a8', intensity: 2.6 }}
       fill={{ sky: '#e2ead0', ground: '#3f4a22', intensity: 0.85 }}
-      camera={{ position: [0, 0.3, 0], target: [0, 0.2, -1.6], fov: 50 }}
-      orb={{ position: [0, 0.17, -1.55], radius: 0.19 }}
+      camera={{ position: [0, 0.24, 0], target: [0.12, 0.3, -1.6], fov: 50 }}
+      orb={{ position: [0.62, 0.17, -1.55], radius: 0.19 }}
       look={{ light: [-0.5, 0.8], tint: '#f4f8ff', rim: '#f6fbff', haloColor: '#d8ecff', halo: 0.25, bob: 0, bend: 2.0, gain: 1.3 }}
       glow={{ color: '#cfe6ff', intensity: 0.3, distance: 1.0 }}
       clear="#1d2a22"
       poster={{ portrait: '/poster/scene3-portrait.webp', landscape: '/poster/scene3-landscape.webp' }}
-      bloom={0.6}
+      bloom={0.7}
+      haze={0.4}
+      soften={{ amount: 0.6, radius: 3.5, mist: 0.07 }}
     >
+      {/* the great trunk closing the right of the frame: a scanned fir (Poly Haven fir_tree_01) */}
+      <FirTrunk position={[1.55, -0.05, -1.95]} rotation={[0, 2.4, 0]} scale={1.1} />
       <RockMossSet02 position={[-1.6, 0, -3.0]} rotation={[0, 0.4, 0]} scale={0.7} />
       <RootCluster01 position={[1.9, 0, -3.4]} rotation={[0, -0.8, 0]} scale={0.45} />
       <TreeStump01 position={[1.25, 0, -2.4]} rotation={[0, 0.6, 0]} scale={0.8} />
@@ -72,7 +78,7 @@ export function Scene3Forest() {
           <GrassMedium01 />
         </Fit>
       ))}
-      <SunShafts x={0.27} y={0.97} color="#ffeccc" strength={0.75} haze={0.42} reach={1.45} />
+      <SunShafts x={0.6} y={0.99} color="#ffeccc" strength={0.75} haze={0.42} reach={1.45} />
       <Bokeh
         color="#fff2d6"
         discs={[
