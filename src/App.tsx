@@ -2,6 +2,12 @@ import { useEffect } from 'react'
 import type { JSX } from 'react'
 import { Scene1Space } from './scenes/Scene1Space'
 import { Scene2Clouds } from './scenes/Scene2Clouds'
+import { Scene3Forest } from './scenes/Scene3Forest'
+import { Scene4Lake } from './scenes/Scene4Lake'
+import { Scene5Desert } from './scenes/Scene5Desert'
+import { Scene6Ice } from './scenes/Scene6Ice'
+import { Scene7Descent } from './scenes/Scene7Descent'
+import { Scene8Seabed } from './scenes/Scene8Seabed'
 
 /**
  * The app is the picture. `?scene=1..8` mounts exactly one scene, full-bleed, with no interface at
@@ -14,6 +20,12 @@ import { Scene2Clouds } from './scenes/Scene2Clouds'
 const SCENES: Record<number, () => JSX.Element> = {
   1: Scene1Space,
   2: Scene2Clouds,
+  3: Scene3Forest,
+  4: Scene4Lake,
+  5: Scene5Desert,
+  6: Scene6Ice,
+  7: Scene7Descent,
+  8: Scene8Seabed,
 }
 
 export default function App({ scene = 1 }: { scene?: number }) {
