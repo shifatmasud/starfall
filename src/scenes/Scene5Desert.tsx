@@ -1,8 +1,10 @@
 import { ScanScene } from './scan/ScanScene'
 import { Fit } from './scan/Fit'
 import { WaterPlane } from './scan/WaterPlane'
-import { QuiverTree01 } from '../scans/models/QuiverTree01'
 import { NamaqualandBoulder02 } from '../scans/models/NamaqualandBoulder02'
+import { ScanPalm } from './scan/ScanPalm'
+import { GrassMedium02 } from '../scans/models/GrassMedium02'
+import { Shrub04 } from '../scans/models/Shrub04'
 import { SandRocksSmall01 } from '../scans/models/SandRocksSmall01'
 
 /**
@@ -35,15 +37,14 @@ export function Scene5Desert() {
       soften={{ amount: 0.3, radius: 3, mist: 0.18 }}
     >
       <WaterPlane far={2.6} at={[-0.8, -5.4]} y={0.015} wind={2.5} fetch={300} chl={0.03} metersPerUnit={0.6} depth={1.6} sunFrom={[-5, 7, -2]} sunColor="#ffe6c2" lift={2.6} />
-      <Fit size={3.2} position={[2.6, 0, -6.5]} rotation={[0, 0.4, 0]}>
-        <QuiverTree01 />
-      </Fit>
-      <Fit size={2.4} position={[3.8, 0, -8.0]} rotation={[0, 2.0, 0]}>
-        <QuiverTree01 />
-      </Fit>
-      <Fit size={2.8} position={[-3.4, 0, -7.5]} rotation={[0, 1.1, 0]}>
-        <QuiverTree01 />
-      </Fit>
+      <ScanPalm height={3.0} position={[-3.0, 0, -7.0]} yaw={0.4} />
+      <ScanPalm height={2.5} position={[-1.8, 0, -8.0]} yaw={1.7} fronds={8} />
+      <ScanPalm height={2.2} position={[2.0, 0, -9.0]} yaw={0.9} fronds={8} />
+      <ScanPalm height={1.9} position={[3.4, 0, -7.0]} yaw={2.4} fronds={7} />
+      <Fit size={0.9} position={[-3.8, 0, -3.4]} rotation={[0, 0.5, 0]}><GrassMedium02 /></Fit>
+      <Fit size={0.8} position={[3.4, 0, -2.6]} rotation={[0, 1.5, 0]}><GrassMedium02 /></Fit>
+      <Fit size={0.7} position={[-2.6, 0, -4.2]}><GrassMedium02 /></Fit>
+      <Fit size={0.9} position={[2.4, 0, -5.2]} rotation={[0, 2.5, 0]}><Shrub04 /></Fit>
       <Fit size={2.2} position={[-1.8, 0, -5.5]} rotation={[0, 0.3, 0]}>
         <NamaqualandBoulder02 />
       </Fit>
