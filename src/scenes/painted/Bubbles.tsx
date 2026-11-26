@@ -42,10 +42,13 @@ layout(location = 0) out vec4 fragColor;
 void main() {
   float d = length(vQ);
   if (d > 1.0) discard;
-  float rim = smoothstep(0.62, 0.92, d) * (1.0 - smoothstep(0.92, 1.0, d));
-  float fill = 0.10 * (1.0 - d);
-  float hi = smoothstep(0.32, 0.0, length(vQ - vec2(-0.35, 0.38)));
-  vec3 col = uColor * (rim * 0.85 + fill) + vec3(1.0) * hi * 0.9;
+  // a thin walled bubble: a bright shell, a milky body inside it (so the trail reads as foam, not as
+  // drawn circles), and the two specular windows a real bubble has
+  float shell = smoothstep(0.52, 0.88, d) * (1.0 - smoothstep(0.88, 1.0, d));
+  float body = smoothstep(0.92, 0.0, d) * 0.18;
+  float hi = smoothstep(0.30, 0.0, length(vQ - vec2(-0.33, 0.36))) * 0.95;
+  float hi2 = smoothstep(0.16, 0.0, length(vQ - vec2(0.30, -0.34))) * 0.40;
+  vec3 col = uColor * (shell * 0.95 + body) + vec3(1.0) * (hi + hi2);
   fragColor = vec4(col * vFade, 1.0);
 }
 `
@@ -60,7 +63,7 @@ export type BubblesProps = {
   color?: string
 }
 
-export function Bubbles({ head, dir, len, spread, size, count = 90, color = '#cfeeff' }: BubblesProps) {
+export function Bubbles({ head, dir, len, spread, size, count = 190, color = '#dff3ff' }: BubblesProps) {
   const viewport = useThree((s) => s.size)
   const { mesh, mat } = useMemo(() => {
     const geo = new THREE.InstancedBufferGeometry()
@@ -73,7 +76,7 @@ export function Bubbles({ head, dir, len, spread, size, count = 90, color = '#cf
     for (let i = 0; i < count; i++) {
       const big = rnd()
       seeds[i * 4] = i / count + rnd() * 0.01
-      seeds[i * 4 + 1] = 0.25 + Math.pow(big, 3) * 1.1
+      seeds[i * 4 + 1] = 0.30 + Math.pow(big, 2.2) * 1.5
       seeds[i * 4 + 2] = (rnd() * 2 - 1) * (0.4 + rnd() * 0.6)
       seeds[i * 4 + 3] = rnd()
     }

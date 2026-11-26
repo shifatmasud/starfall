@@ -29,21 +29,26 @@ export function ScanPalm({
   const leaf = { color: [0.62, 0.7, 0.3] as [number, number, number], strength: 0.9, power: 2, ambient: 0.3 }
   const Crown = Crowns[variant % 3]
   const Crown2 = Crowns[(variant + 1) % 3]
-  const w = height * crown * 1.05
+  const w = height * crown * 1.55
   return (
     <group position={position} rotation={[0, yaw, 0]}>
-      <group scale={[0.62, 1, 0.62]}>
+      <group scale={[0.85, 1, 0.85]}>
         <Fit size={height} tint="#f0dcc0" emissive={['#6a4e36', 0.35]}>
           <QuixelPalmTrunk />
         </Fit>
       </group>
-      <group position={[0, height * 0.9, 0]}>
+      <group position={[0, height * 0.93, 0]}>
         <Fit size={w} sss={leaf} tint="#9cae6a">
           <Crown />
         </Fit>
         <group rotation={[0.12, 2.1, 0.1]} position={[0, w * 0.05, 0]}>
-          <Fit size={w * 0.85} sss={leaf} tint="#8aa060">
+          <Fit size={w * 0.88} sss={leaf} tint="#8aa060">
             <Crown2 />
+          </Fit>
+        </group>
+        <group rotation={[-0.10, 4.2, -0.08]} position={[0, w * 0.09, 0]}>
+          <Fit size={w * 0.70} sss={leaf} tint="#a0b070">
+            <Crown />
           </Fit>
         </group>
       </group>

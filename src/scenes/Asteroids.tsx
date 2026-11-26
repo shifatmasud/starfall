@@ -57,7 +57,7 @@ function Stone({ stone, layout }: { stone: Stone; layout: Layout }) {
   const halfW = halfH * layout.aspect
   const x = stone.sx * 2 * halfW - halfW
   const y = halfH - stone.sy * 2 * halfH
-  const scale = ((2 * stone.size * halfH * (layout.mobile ? 0.85 : 1)) / model.w) * 1.0
+  const scale = ((2 * stone.size * halfH * (layout.mobile ? 0.85 : 1)) / model.w) * 0.72
 
   useFrame((_, delta) => {
     if (group.current) group.current.rotation.y += delta * stone.spin

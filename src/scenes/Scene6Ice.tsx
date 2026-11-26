@@ -49,10 +49,22 @@ export function Scene6Ice() {
       haze={0.35}
       soften={{ amount: 0.25, radius: 3, mist: 0.12 }}
     >
-      <WaterPlane near={0} y={0.0} wind={6} fetch={30000} chl={0.3} metersPerUnit={2.5} sunFrom={[9, 2.4, -8]} sunColor="#fff6e6" lift={1.6} sparkle={1.8} skyBright={0.45} reflGain={1.3} />
-      <Terrain dem="/tex/dem/icefront-h.webp" size={[150, 50]} relief={15} floor={0.06} position={[0, 0, -95]} sun={[0.4, 0.3, -0.85]} haze={0.35} palette={ICEFRONT} />
+      <WaterPlane near={0} y={0.0} wind={3.0} fetch={30000} chl={0.08} metersPerUnit={2.5} sunFrom={[9, 2.4, -8]} sunColor="#fff6e6" lift={1.85} sparkle={1.3} skyBright={1.05} reflGain={1.45} />
+      <Terrain dem="/tex/dem/icefront-h.webp" size={[190, 60]} relief={26} floor={0.04} position={[0, 0, -112]} sun={[0.4, 0.3, -0.85]} haze={0.35} palette={ICEFRONT} />
       {BERGS.map(([x, z, s, r], i) => (
-        <Fit key={i} size={s} position={[x, -0.05, z]} rotation={[0, r, 0]} tint="#ffffff" emissive={['#d8ecfa', 0.6]} roughness={0.3} sss={ICE} stretch={0.8}>
+        // cut ice, not a boulder: the scan's mass stood up, faceted flat, and floated low in the water
+        <Fit
+          key={i}
+          size={s}
+          position={[x, -0.16 * s, z]}
+          rotation={[0, r, 0]}
+          tint="#f4faff"
+          emissive={['#cfe8ff', 0.42]}
+          roughness={0.34}
+          sss={ICE}
+          stretch={1.25 + 0.5 * (i % 3)}
+          flat
+        >
           <NamaqualandBoulder02 />
         </Fit>
       ))}

@@ -17,6 +17,7 @@ export function Fit({
   roughness,
   sss,
   stretch = 1,
+  flat,
   children,
 }: {
   size: number
@@ -29,6 +30,8 @@ export function Fit({
   sss?: SSS
   /** extra vertical stretch after fitting (a slab of rock stood up into a berg) */
   stretch?: number
+  /** flat shading: the faceted look of cut ice */
+  flat?: boolean
   children: ReactNode
 }) {
   const outer = useRef<THREE.Group>(null)
@@ -45,7 +48,7 @@ export function Fit({
     const c = box.getCenter(new THREE.Vector3())
     g.scale.set(s, s * stretch, s)
     g.position.set(-c.x * s, -box.min.y * s * stretch, -c.z * s)
-    if (tint || emissive || roughness !== undefined || sss) {
+    if (tint || emissive || roughness !== undefined || sss || flat) {
       g.traverse((o) => {
         const m = o as THREE.Mesh
         if (!m.isMesh) return
@@ -57,6 +60,10 @@ export function Fit({
         }
         if (roughness !== undefined) mat.roughness = roughness
         if (sss) applySSS(mat, sss)
+        if (flat) {
+          mat.flatShading = true
+          mat.needsUpdate = true
+        }
         m.material = mat
       })
     }

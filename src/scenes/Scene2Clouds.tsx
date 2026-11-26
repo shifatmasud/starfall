@@ -54,13 +54,13 @@ function Scene({ layout }: { layout: Layout }) {
       <Sky layout={layout} />
 
       {/* one real summit out of the cloud sea, mid-distance on the right: the Matterhorn's own DEM */}
-      <Peak aspect={layout.aspect} u={0.862} v={0.345} z={-28} size={8.2} yaw={0.5} />
+      <Peak aspect={layout.aspect} u={0.815} v={0.315} z={-30} size={7.4} yaw={0.5} />
 
       <CloudSea layout={layout} layer="back" renderOrder={-2} sss={0.045} reach={0.2} soft={0.6} />
       {/* the glass meteor, low right of centre, its wake running up-left for a third of the frame */}
       <Orb
-        orb={{ position: at(0.53, 0.56, -6, layout.aspect), radius: sizeAt(0.064, 0, -6, layout.aspect)[0] / 2 }}
-        streak={{ dir: [-0.33 * layout.aspect, 0.23], len: 1.3 * Math.hypot(0.33 * layout.aspect, 0.23), width: 0.04, color: '#fff3de', strength: 3.6 }}
+        orb={{ position: at(0.48, 0.46, -6, layout.aspect), radius: sizeAt(0.050, 0, -6, layout.aspect)[0] / 2 }}
+        streak={{ dir: [-0.42 * layout.aspect, 0.26], len: 0.85 * Math.hypot(0.42 * layout.aspect, 0.26), width: 0.028, color: '#fff3de', strength: 3.0 }}
         look={{ light: [-0.25, 0.9], tint: '#f6f2ff', rim: '#fff4e2', haloColor: '#ffe6c0', halo: 0.7, gain: 1.45 }}
         glow={{ color: '#ffdcb0', intensity: 4, distance: 10 }}
       />

@@ -95,33 +95,38 @@ void main() {
   vec3 amber = vec3(1.0, 0.66, 0.30);
   vec3 ice = vec3(0.60, 0.80, 1.0);
 
-  // clear body: the sky behind survives, cooled a little, warmed on the sun side
-  vec3 col = inside * (1.05 + 0.40 * sunSide);
-  col += ice * 0.075 * (0.35 + fres);
-  // the golden refracted strata — the plate's warm streaks, hottest where the light enters
-  col += vec3(1.0, 0.82, 0.44) * strata * (1.25 + 1.85 * sunSide) * (0.45 + 0.85 * fres);
-  col += vec3(1.0, 0.86, 0.58) * swirl * (0.30 + 0.70 * sunSide) * 0.42;
+  // the glass body: the ball holds the light it scatters, so it is a luminous body with a clear form —
+  // a shadowed cool side toward the planet, a sun-struck side toward the star — never a grey disc
+  float sunLit = smoothstep(-0.55, 0.95, dot(N, L));
+  vec3 col = mix(vec3(0.10, 0.16, 0.32), vec3(1.0, 0.88, 0.68), sunLit);
+  // the world seen through the glass, gathering toward the silhouette
+  col += inside * (0.30 + 0.70 * fres) * 1.50;
+  // the star's light caught in the lower-right of the ball, the plate's warm gold
+  col += vec3(1.0, 0.86, 0.62) * pow(max(dot(N, normalize(vec3(0.82, -0.12, 0.56))), 0.0), 2.0) * 0.50;
 
-  // the star at the heart of the crystal: a broad golden fire with a white-hot centre, big enough
-  // to read as the light source the whole ball is lit by
-  float coreD = clamp(dot(-N, normalize(vec3(0.30, 0.05, 0.95))), 0.0, 1.0);
-  col += vec3(1.0, 0.74, 0.42) * pow(coreD, 1.2) * 1.25;
-  col += vec3(1.0, 0.84, 0.58) * pow(coreD, 2.6) * 1.90;
-  col += vec3(1.0, 0.94, 0.80) * pow(coreD, 6.0) * 1.60;
-  col += vec3(1.0, 0.99, 0.97) * pow(coreD, 18.0) * 1.10;
-  // the glass itself holds the light: a soft core down the middle, never a dark marble
-  col += vec3(1.0, 0.84, 0.60) * pow(ndv, 2.4) * 0.55;
-  // and a thin caustic line where the crystal's edge bends the star's light
-  float caustic = pow(1.0 - abs(vObj.x * 1.15 + vObj.y * 0.35 - 0.05), 26.0);
-  col += vec3(1.0, 0.94, 0.84) * caustic * 0.35 * (0.4 + 0.6 * sunSide);
+  // a whisper of the plate's warm strata, never a brown wash across the body
+  col += vec3(1.0, 0.90, 0.72) * strata * (0.03 + 0.10 * sunSide) * (0.35 + 0.65 * fres);
+  col += vec3(1.0, 0.92, 0.78) * swirl * (0.06 + 0.12 * sunSide);
+
+  // the specular window: a small, hard, white-hot highlight where the star's light is focused
+  float coreD = clamp(dot(-N, normalize(vec3(0.55, 0.42, 0.72))), 0.0, 1.0);
+  col += vec3(1.0, 0.99, 0.95) * pow(coreD, 26.0) * 1.60;
+  col += vec3(1.0, 0.99, 0.98) * pow(coreD, 90.0) * 1.20;
+
+  // the sunward limb: the glass gathers the star's light into a hot white-gold edge
+  float hot = smoothstep(0.42, 1.0, dot(N, L)) * pow(1.0 - ndv, 1.35);
+  col += vec3(1.0, 0.96, 0.88) * hot * 3.10;
+  // and a thin caustic arc opposite the light where the glass throws it back out
+  float caustic = pow(1.0 - abs(vObj.x * 1.15 + vObj.y * 0.35 - 0.05), 34.0);
+  col += vec3(1.0, 0.98, 0.92) * caustic * 0.45 * (0.4 + 0.6 * sunSide);
 
   // the shell: one thin bright line, white where it faces the star and cool elsewhere
   float rim = pow(1.0 - ndv, 7.5);
   vec3 H = normalize(L + V);
   float spec = pow(max(dot(N, H), 0.0), 900.0);
   float lit = smoothstep(-0.45, 0.95, dot(N, L));
-  col += mix(ice, vec3(1.0, 0.92, 0.78), lit) * rim * (0.85 + 2.30 * lit);
-  col += vec3(1.0, 0.99, 0.96) * spec * 13.0;
+  col += mix(ice, vec3(1.0, 0.95, 0.84), lit) * rim * (1.10 + 3.20 * lit);
+  col += vec3(1.0, 0.99, 0.96) * spec * 16.0;
   col += vec3(1.0, 0.90, 0.74) * pow(max(dot(N, H), 0.0), 120.0) * 0.35 * sunSide;
 
   // a warm bloom off the sunward shoulder, as on the plate
@@ -129,7 +134,7 @@ void main() {
   col += vec3(1.0, 0.80, 0.56) * shoulder * 0.60;
 
   // glass, not paint: transparent in the middle, gathering at the silhouette
-  float alpha = clamp(0.14 + 0.52 * fres + 0.55 * rim + 0.45 * spec + 0.28 * strata * sunSide, 0.12, 1.0);
+  float alpha = clamp(0.86 + 0.14 * fres, 0.80, 1.0);
 
   if (uSky > 0.5) {
     // a star seen in daylight: white-hot heart, warm gold body, a cool cut rim. None of the dark

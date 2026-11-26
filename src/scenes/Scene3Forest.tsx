@@ -113,14 +113,14 @@ export function Scene3Forest() {
       fill={{ sky: '#dfe6e4', ground: '#3d4538', intensity: 0.8 }}
       camera={{ position: [0, 0.18, 0], target: [0.11, 0.06, -1.6], fov: 50 }}
       orb={{ position: [0.1, 0.16, -1.55], radius: 0.16 }}
-      look={{ light: [-0.6, 0.8], tint: '#f6f8f4', rim: '#aebcc0', haloColor: '#ffe6bd', halo: 0.12, bob: 0, bend: 2.0, gain: 1.25 }}
-      glow={{ color: '#ffe2b0', intensity: 1.4, distance: 1.4 }}
+      look={{ light: [-0.6, 0.8], tint: '#f7faf6', rim: '#c8d6d2', haloColor: '#ffe6bd', halo: 0.42, bob: 0, bend: 2.0, gain: 1.55, core: [0.35, 0.26, 0.12] }}
+      glow={{ color: '#ffe2b0', intensity: 2.2, distance: 1.8 }}
       clear="#1d2a22"
       poster={{ portrait: '/poster/scene3-portrait.webp', landscape: '/poster/scene3-landscape.webp' }}
-      bloom={0.7}
-      exposure={1.18}
-      haze={0.55}
-      soften={{ amount: 0.6, radius: 3.5, mist: 0.12 }}
+      bloom={0.58}
+      exposure={1.14}
+      haze={0.34}
+      soften={{ amount: 0.38, radius: 3.2, mist: 0.07 }}
     >
       {/* the great trunk closing the right of the frame: a scanned fir (Poly Haven fir_tree_01) */}
       <FirTrunk position={[1.17, -0.05, -2.2]} rotation={[0, 2.4, 0]} scale={1.1} />
