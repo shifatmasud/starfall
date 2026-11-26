@@ -1,7 +1,11 @@
+import * as THREE from 'three'
 import { ScanScene } from './scan/ScanScene'
 import { Fit } from './scan/Fit'
 import { WaterPlane } from './scan/WaterPlane'
-import { GrassMedium01 } from '../scans/models/GrassMedium01'
+import { GrassMedium02Field, type GrassInstance } from '../scans/models/GrassMedium02'
+import { FlowerHeliophila } from '../scans/models/FlowerHeliophila'
+import { scatterTufts, hash, sstep } from '../scans/scatter'
+import { caps } from '../gl/capabilities'
 import { RockMossSet02 } from '../scans/models/RockMossSet02'
 
 /**
@@ -12,9 +16,25 @@ import { RockMossSet02 } from '../scans/models/RockMossSet02'
  * foreground, like the reference's flowered bank.
  */
 
-const GRASS: [number, number, number][] = [
-  [-1.1, -1.6, 0.5], [-0.6, -1.3, 0.4], [0.7, -1.4, 0.45], [1.2, -1.9, 0.55], [-1.5, -2.3, 0.5], [0.2, -1.2, 0.35], [1.6, -1.3, 0.5],
-]
+/** meadow bank: scanned grass tufts as GPU instances, thinning toward the lake's edge and clear of the rock */
+function meadow(count: number): GrassInstance[] {
+  return scatterTufts({
+    count, z: [-0.3, -3.5], seed: 4, y: -0.005,
+    tints: [new THREE.Color(2.0, 2.5, 1.1), new THREE.Color(2.6, 3.1, 1.3), new THREE.Color(3.3, 3.6, 1.7)],
+    halfW: (z) => 0.75 * -z + 0.3,
+    scale: [0.38, 0.4],
+    mask: (x, z) => (1 - sstep(2.7, 3.3, -z) * 0.7) * sstep(0.28, 0.5, Math.hypot(x - 1.35, z + 2.2)),
+  })
+}
+let grass: GrassInstance[] | null = null
+const grassField = () => (grass ??= meadow(caps().lowTier ? 2500 : 8000))
+
+/** small white scanned flowers scattered in the foreground drifts (Heliophila's foot is off its origin) */
+const FLOWERS = Array.from({ length: 26 }, (_, i) => {
+  const z = -0.5 - 2.6 * Math.pow(hash(i * 1.7, 2.2), 1.1)
+  const x = (hash(i * 3.1, 5.5) * 2 - 1) * (0.7 * -z + 0.2)
+  return { x, z, s: 1.0 + 0.6 * hash(i * 7.7, 1.3), r: hash(i * 2.9, 9.1) * 6.28 }
+}).filter((f) => Math.hypot(f.x - 1.35, f.z + 2.2) > 0.5)
 
 export function Scene4Lake() {
   return (
@@ -33,10 +53,11 @@ export function Scene4Lake() {
       bloom={0.45}
     >
       <WaterPlane near={3.5} y={0.02} wind={3} fetch={8000} chl={0.3} metersPerUnit={1.5} sunFrom={[7, 3, -8]} sunColor="#fff2dc" lift={1.6} shore={2.2} sparkle={1.3} skyBright={0.6} reflGain={1.2} />
-      {GRASS.map(([x, z, s], i) => (
-        <Fit key={i} size={s} position={[x, 0, z]} rotation={[0, i * 1.7, 0]}>
-          <GrassMedium01 />
-        </Fit>
+      <GrassMedium02Field instances={grassField()} sunFrom={[4, 6, -3]} sunColor="#fff2dc" sway={0.012} translucency={1.6} />
+      {FLOWERS.map((f, i) => (
+        <group key={i} position={[f.x, 0, f.z]} rotation={[0, f.r, 0]} scale={f.s}>
+          <FlowerHeliophila position={[-1.163, 0, 0.017]} />
+        </group>
       ))}
       <Fit size={0.7} position={[1.35, 0, -2.2]} rotation={[0, 0.8, 0]}>
         <RockMossSet02 />
