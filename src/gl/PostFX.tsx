@@ -5,6 +5,7 @@ import {
   BlendFunction,
   BloomEffect,
   Effect,
+  EffectAttribute,
   EffectComposer,
   EffectPass,
   RenderPass,
@@ -187,6 +188,50 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `
 
+/**
+ * Soften: the painterly diffusion of the reference panels. A golden-angle disc blur of the frame is
+ * mixed back over it (edges and fine scan detail melt into strokes of tone), and the blur is also
+ * screened over the frame as a mist, so highlights spill into the air around them the way light does
+ * through haze. 0 leaves the frame untouched.
+ */
+const SoftenShader = /* glsl */ `
+uniform float uSoft;
+uniform float uRadius;
+uniform float uMist;
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec3 acc = inputColor.rgb;
+  float wsum = 1.0;
+  for (int i = 1; i < 24; i++) {
+    float fi = float(i);
+    float r = sqrt(fi / 24.0);
+    float a = fi * 2.39996;
+    vec2 o = vec2(cos(a), sin(a)) * r * uRadius * texelSize;
+    float w = 1.0 - r * 0.5;
+    acc += texture(inputBuffer, uv + o).rgb * w;
+    wsum += w;
+  }
+  vec3 blur = acc / wsum;
+  vec3 col = mix(inputColor.rgb, blur, uSoft);
+  vec3 mist = clamp(blur, 0.0, 1.0) * uMist;
+  col = 1.0 - (1.0 - col) * (1.0 - mist);
+  outputColor = vec4(col, inputColor.a);
+}
+`
+
+class SoftenEffect extends Effect {
+  constructor() {
+    super('SoftenEffect', SoftenShader, {
+      blendFunction: BlendFunction.SRC,
+      attributes: EffectAttribute.CONVOLUTION,
+      uniforms: new Map<string, THREE.Uniform>([
+        ['uSoft', new THREE.Uniform(0)],
+        ['uRadius', new THREE.Uniform(3)],
+        ['uMist', new THREE.Uniform(0)],
+      ]),
+    })
+  }
+}
+
 class FinalEffect extends Effect {
   constructor(exposure: number) {
     super('FinalEffect', FinalShader, {
@@ -222,6 +267,10 @@ class DistortEffect extends Effect {
 export type PostFXProps = {
   bloom?: number
   exposure?: number
+  /** painterly softening: share of the blurred frame mixed in, its radius in pixels, and the mist */
+  soften?: { amount: number; radius: number; mist?: number }
+  /** a second, wide, low-threshold bloom: light breathing into the air (0 = off) */
+  haze?: number
 }
 
 /** The live cursor-trail field, so the app's pointer listeners can paint it. */
@@ -230,7 +279,7 @@ export const trailRef: { current: FluidTrail | null } = { current: null }
 /** the last point of contact, in CSS pixels: the centre of the liquid bead */
 const bead = { x: 0.5, y: 0.5 }
 
-export function PostFX({ bloom = 0.62, exposure = 1.06 }: PostFXProps) {
+export function PostFX({ bloom = 0.62, exposure = 1.06, soften, haze = 0 }: PostFXProps) {
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera as THREE.PerspectiveCamera)
@@ -317,25 +366,41 @@ export function PostFX({ bloom = 0.62, exposure = 1.06 }: PostFXProps) {
       mipmapBlur: true,
       radius: 0.78,
     })
+    const hazeEffect = new BloomEffect({
+      blendFunction: BlendFunction.SCREEN,
+      luminanceThreshold: 0.55,
+      luminanceSmoothing: 0.4,
+      intensity: 0,
+      mipmapBlur: true,
+      radius: 0.92,
+      levels: 7,
+    })
+    const soft = new SoftenEffect()
     const final = new FinalEffect(exposure)
     const distort = new DistortEffect(trail.texture, trail.texelSize)
 
-    comp.addPass(new EffectPass(camera, bloomEffect))
+    // the haze bloom and the softening pass only exist in scenes that ask for them
+    comp.addPass(haze > 0 ? new EffectPass(camera, bloomEffect, hazeEffect) : new EffectPass(camera, bloomEffect))
+    if (soften) comp.addPass(new EffectPass(camera, soft))
     comp.addPass(new EffectPass(camera, final))
     comp.addPass(new EffectPass(camera, distort))
     // SMAA is two extra full-frame passes and two more targets: on a phone the canvas already renders
     // at 2× and the grade's dither hides the rest, so the edge pass stays on the large screen
-    if (!device.lowTier) comp.addPass(new EffectPass(camera, new SMAAEffect()))
-    return { comp, bloomEffect, final, distort }
-  }, [gl, scene, camera, trail, exposure, device.lowTier])
+    if (!device.lowTier && !soften) comp.addPass(new EffectPass(camera, new SMAAEffect()))
+    return { comp, bloomEffect, hazeEffect, soft, final, distort }
+  }, [gl, scene, camera, trail, exposure, device.lowTier, !soften, haze > 0])
 
   useEffect(() => () => composer.comp.dispose(), [composer])
 
   useEffect(() => {
     composer.bloomEffect.intensity = bloom
+    composer.hazeEffect.intensity = haze
+    composer.soft.uniforms.get('uSoft')!.value = soften?.amount ?? 0
+    composer.soft.uniforms.get('uRadius')!.value = (soften?.radius ?? 3) * gl.getPixelRatio()
+    composer.soft.uniforms.get('uMist')!.value = soften?.mist ?? 0
     const u = composer.final.uniforms.get('uExposure')
     if (u) u.value = exposure
-  }, [composer, bloom, exposure])
+  }, [composer, bloom, exposure, haze, soften?.amount, soften?.radius, soften?.mist, gl])
 
   // The chain runs at the canvas's own device resolution, capped by a pixel budget: several RGBA16F
   // buffers at full phone resolution is how a phone loses its context.
