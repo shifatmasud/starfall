@@ -42,6 +42,8 @@ for (const e of manifest) {
   const doc = await io.read(main)
   const root = doc.getRoot()
   if (e.mesh) for (const n of root.listNodes()) { const m = n.getMesh(); if (m && m.getName() !== e.mesh) n.dispose() }
+  // keep only the named nodes (a few tufts out of a scanned set)
+  if (e.nodes) for (const n of root.listNodes()) if (n.getMesh() && !e.nodes.includes(n.getName())) n.dispose()
   // keep only the parts made of the named materials (a tree's trunk without its million twigs)
   if (e.materials) for (const m of root.listMeshes()) for (const p of m.listPrimitives()) {
     if (!e.materials.includes(p.getMaterial()?.getName())) { m.removePrimitive(p); p.dispose() }
@@ -56,8 +58,8 @@ for (const e of manifest) {
   }
   await doc.transform(
     F.prune(), F.dedup(), F.weld(),
-    F.simplify({ simplifier: MeshoptSimplifier, ratio: e.ratio ?? 0.25, error: 0.01 }),
-    F.textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [e.tex ?? 256, e.tex ?? 256], quality: 70 }),
+    F.simplify({ simplifier: MeshoptSimplifier, ratio: e.ratio ?? 0.25, error: e.error ?? 0.01 }),
+    F.textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [e.tex ?? 256, e.tex ?? 256], quality: e.quality ?? 70 }),
     F.prune(), F.quantize(), F.reorder({ encoder: MeshoptEncoder }),
   )
   doc.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.FILTER })

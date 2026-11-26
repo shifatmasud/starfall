@@ -1,4 +1,5 @@
 [
-  { "id": "flower_heliophila", "res": "1k", "mesh": "Plane.2197", "ratio": 0.035, "tex": 128, "out": "flower_heliophila" },
-  { "id": "fir_tree_01", "res": "1k", "mesh": "NurbsPath.001", "materials": ["fir_tree_01_trunk_a", "fir_tree_01_dead_branches"], "ratio": 0.2, "tex": 512, "out": "fir_trunk" }
+  {"id": "flower_heliophila", "res": "1k", "mesh": "Plane.2197", "ratio": 0.035, "tex": 128, "out": "flower_heliophila"},
+  {"id": "fir_tree_01", "res": "1k", "mesh": "NurbsPath.001", "materials": ["fir_tree_01_trunk_a", "fir_tree_01_dead_branches"], "ratio": 0.2, "tex": 512, "out": "fir_trunk"},
+  {"id": "grass_medium_02", "res": "1k", "nodes": ["grass_medium_02_a", "grass_medium_02_c"], "ratio": 0.45, "error": 0.02, "tex": 192, "quality": 60, "out": "grass_medium_02"}
 ]
