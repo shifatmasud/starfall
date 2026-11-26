@@ -21,6 +21,7 @@ for (let i = 0; i < 120; i++) {
   await sleep(250)
 }
 const browser = await chromium.launch({
+  executablePath: process.env.CHROME_PATH || undefined,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars'],
 })
 const page = await browser.newPage({

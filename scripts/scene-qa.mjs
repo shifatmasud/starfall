@@ -62,7 +62,7 @@ let browser
 try {
   await mkdir(OUT, { recursive: true })
   await waitForServer(BASE)
-  browser = await chromium.launch({ args: CHROMIUM_ARGS })
+  browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: CHROMIUM_ARGS })
   for (const vp of VIEWPORTS) {
     const context = await browser.newContext({
       viewport: { width: vp.width, height: vp.height },

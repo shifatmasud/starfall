@@ -52,6 +52,9 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export function SceneCanvas({ poster, clear, camera, children }: Props) {
   const device = useMemo(() => caps(), [])
+  // ?qa=1 is a headless CPU rasterizer: seconds per frame is normal there, and the frame watchdog
+  // must not read that as a lost context and rebuild the canvas out from under the screenshot
+  const qa = useMemo(() => new URLSearchParams(location.search).has('qa'), [])
   const override = useMemo(() => qualityOverride(), [])
   // `?q=low` forces the phone-class path on a big screen, `?q=high` the reverse
   const forced = override === 'low' ? true : override === 'high' ? false : null
@@ -84,7 +87,7 @@ export function SceneCanvas({ poster, clear, camera, children }: Props) {
   // the watchdog: a live canvas that stops producing frames is treated as a lost context, because on
   // Android that is what it almost always is
   useEffect(() => {
-    if (failed) return
+    if (failed || qa) return
     const timer = window.setInterval(() => {
       if (document.visibilityState !== 'visible') {
         lastChange.current = performance.now()
@@ -104,7 +107,7 @@ export function SceneCanvas({ poster, clear, camera, children }: Props) {
       }
     }, 900)
     return () => window.clearInterval(timer)
-  }, [failed, gen])
+  }, [failed, gen, qa])
 
   const attach = (gl: { domElement: HTMLCanvasElement }) => {
     const canvas = gl.domElement

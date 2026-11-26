@@ -10,7 +10,7 @@ const PORT = Number(process.env.QA_PORT ?? 4300 + Math.floor(Math.random() * 200
 const server = spawn('npm', ['run', 'preview', '--', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', env: { ...process.env, CI: '1' } })
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 for (let i = 0; i < 120; i++) { try { const r = await fetch(`http://127.0.0.1:${PORT}/`); if (r.ok) break } catch {} await sleep(250) }
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars'] })
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars'] })
 const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 })
 page.on('pageerror', (e) => console.log('ERR', e.message))
 page.on('console', (m) => { if (m.type() === 'error') console.log('CERR', m.text()) })
