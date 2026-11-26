@@ -24,6 +24,12 @@ OUT = 'public/tex/dem'
 SITES = {
     # Scene 6: the ice-clad Saint Elias front behind Disenchantment Bay, Alaska (USGS NED)
     'icefront': (60.10, -139.55, 10, 900, 300, 512, 170, 1),
+    # Scene 4: the Bernese Alps (Eiger, Moench, Jungfrau) as the far range across the lake
+    'alps': (46.56, 7.98, 10, 1000, 260, 320, 84, 2),
+    # Scene 4: the wooded Harder ridge above Lake Brienz, the near hillside on the right
+    'ridge': (46.71, 7.90, 12, 500, 300, 256, 154, 1),
+    # Scene 4: the meadow bank, the gentle pasture of the Bödeli plain at Interlaken
+    'meadow': (46.68, 7.86, 14, 300, 160, 192, 102, 2),
 }
 
 
