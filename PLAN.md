@@ -103,3 +103,31 @@ scanned-frond kelp walls; stronger, narrower vertical shafts; a warmer, cleaner 
 
 One improvement area at a time → `npm run build` → SwiftShader render of that scene next to its
 reference panel → visual check → commit + push → upload the side-by-side sheet.
+
+## State after pass 2 (renders at 1200×750 on SwiftShader)
+
+Done and pushed:
+
+- **1 Space** — rings gone; orb is a luminous glass body (white-gold sunward limb, crisp specular,
+  refracted world in the body, warm lower-right catch-light); Earth's clouds/sea/atmosphere lifted;
+  asteroids smaller. Still: the ball's dark side is darker than the plate's, and faint banding shows
+  in the refraction.
+- **2 Clouds** — sun upper right, warm glow, a strip of sky opens at the top left, summit in from
+  the edge, smaller orb with a shorter wake. Still: cloud tops slightly grey-lavender.
+- **3 Forest** — mist cut, orb glowing on the moss with a warm halo. Closest panel already.
+- **4 Lake** — snow-capped range from the Alps DEM, deeper greens, calmer lake, finer meadow with
+  daisies, right bank pushed back and hazed. Still: no true mountain reflection in the water, and
+  the range sits lower than the plate's.
+- **5 Desert** — full palm crowns, calmer pool with an irregular shoreline, ruin columns now standing
+  above the sand at the pool's left edge, sharper dunes.
+- **6 Ice** — flat-shaded, stretched, low-floating tabular bergs, taller ice front, brighter sea.
+  Still: water reads navy rather than turquoise, sun path weak.
+- **7 Descent** — filled foamy bubbles, brighter shafts from the upper left, lit reef. Still: the
+  trail is dense right at the orb; no fish silhouettes yet.
+- **8 Seabed** — brighter water and warm sand, pastel coral, stronger shafts. Still: sand a little
+  olive, coral shapes read soft.
+
+Open items for the next pass: scene 3 and 7 still light themselves from their own environments
+(scene 3 uses `forest_slope` rather than the shared clear sky — replacing it means building the
+canopy from scans, since a clear sky behind the trunks would show through); true planar reflection
+for scene 4; fish for scene 7; scene 1's orb banding.

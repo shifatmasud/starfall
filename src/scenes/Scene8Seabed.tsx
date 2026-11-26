@@ -32,7 +32,7 @@ export function Scene8Seabed() {
       poster={{ portrait: '/poster/scene8-portrait.webp', landscape: '/poster/scene8-landscape.webp' }}
       bloom={0.65}
     >
-      <Fit size={14} position={[0, -0.6, -4]} rotation={[0, 0, 0]} tint="#ffe8bc">
+      <Fit size={14} position={[0, -0.6, -4]} rotation={[0, 0, 0]} tint="#fff0cc" emissive={['#7a5a34', 0.30]}>
         <SandRocksSmall01 />
       </Fit>
       <Fit size={1.6} position={[-1.5, 0, -3.2]} rotation={[0, 0.7, 0]} tint="#9fb0a8">
@@ -41,16 +41,16 @@ export function Scene8Seabed() {
       <Fit size={1.4} position={[1.6, 0, -3.4]} rotation={[0, 2.4, 0]} tint="#a8b0a0">
         <CoastRocks05 />
       </Fit>
-      <Fit size={0.9} position={[-1.0, 0.1, -2.6]} rotation={[0, 0.4, 0]} tint="#ffb0c8" emissive={['#ff7fa8', 0.25]}>
+      <Fit size={0.62} position={[-1.05, 0.05, -2.7]} rotation={[0, 0.4, 0]} tint="#e8c2cc" emissive={['#7a4050', 0.10]}>
         <CoralAcropora />
       </Fit>
-      <Fit size={0.7} position={[0.95, 0.05, -2.5]} rotation={[0, 1.2, 0]} tint="#ffc48a" emissive={['#ff9a55', 0.22]}>
+      <Fit size={0.60} position={[0.95, 0.05, -2.55]} rotation={[0, 1.2, 0]} tint="#e8c0a0" emissive={['#8a5a38', 0.10]}>
         <CoralPocillopora />
       </Fit>
-      <Fit size={0.6} position={[1.5, 0.1, -2.9]} rotation={[0, 0.2, 0]} tint="#d9a6ff" emissive={['#a86ad8', 0.20]}>
+      <Fit size={0.6} position={[1.5, 0.1, -2.9]} rotation={[0, 0.2, 0]} tint="#c8bcd8" emissive={['#5a4a70', 0.08]}>
         <CoralPorites />
       </Fit>
-      <Fit size={0.45} position={[-0.55, 0, -1.9]} rotation={[0, 2.0, 0]} tint="#ffd0a0" emissive={['#ffa860', 0.18]}>
+      <Fit size={0.45} position={[-0.55, 0, -1.9]} rotation={[0, 2.0, 0]} tint="#e0c8a8" emissive={['#6a5038', 0.08]}>
         <CoralFavia />
       </Fit>
       <Fit size={0.22} position={[0.45, 0, -1.75]} rotation={[0, 0.8, 0]}>

@@ -13,8 +13,8 @@ import { SHARED_SKY } from './scan/sky'
 // real relief, painterly light: the Bernese Alps across the lake, the Harder ridge on the right, the Boedeli pasture underfoot
 const SUN4: [number, number, number] = [0.5, 0.55, -0.65]
 const ALPS = { lit: '#9fb2cc', shade: '#4a6184', snowLit: '#ffffff', snowShade: '#c6d6ec', snowLine: 0.40, air: '#c4d8ec' }
-const RIDGE = { lit: '#54703c', shade: '#22351f', air: '#a9c0c8' }
-const BANK = { lit: '#a9b65e', shade: '#5f7a38', air: '#d0d8a0' }
+const RIDGE = { lit: '#5f7d4c', shade: '#2c4029', air: '#b3c8cf' }
+const BANK = { lit: '#8fa85a', shade: '#4a6330', air: '#cfdaa8' }
 
 /**
  * Scene 4 — Lake. The orb flies with a light streak over a meadow toward a mountain-bordered lake.
@@ -29,7 +29,7 @@ const BANK = { lit: '#a9b65e', shade: '#5f7a38', air: '#d0d8a0' }
 function meadow(count: number): GrassInstance[] {
   return scatterTufts({
     count, z: [0.4, -3.6], seed: 4, y: -0.005,
-    tints: [new THREE.Color(1.5, 1.9, 0.8), new THREE.Color(1.9, 2.2, 1.0), new THREE.Color(2.4, 2.6, 1.3)],
+    tints: [new THREE.Color(1.05, 1.25, 0.62), new THREE.Color(1.30, 1.45, 0.75), new THREE.Color(1.55, 1.65, 0.90)],
     halfW: (z) => 0.62 * (0.6 - z) + 0.4,
     scale: [0.26, 0.28],
     mask: (x, z) => (1 - sstep(2.7, 3.3, -z) * 0.7) * sstep(0.28, 0.5, Math.hypot(x - 1.35, z + 2.2)),
@@ -64,9 +64,9 @@ export function Scene4Lake() {
       poster={{ portrait: '/poster/scene4-portrait.webp', landscape: '/poster/scene4-landscape.webp' }}
       bloom={0.45}
     >
-      <WaterPlane near={3.5} y={0.02} wind={0.28} fetch={8000} chl={0.12} metersPerUnit={1.5} sunFrom={[7, 3, -8]} sunColor="#fff2dc" lift={0.75} shore={2.2} sparkle={0.18} skyBright={0.40} reflGain={1.05} />
+      <WaterPlane near={3.5} y={0.02} wind={0.14} fetch={8000} chl={0.10} metersPerUnit={1.5} sunFrom={[7, 3, -8]} sunColor="#fff2dc" lift={0.80} shore={2.2} sparkle={0.10} skyBright={0.55} reflGain={1.25} />
       <Terrain dem="/tex/dem/meadow-h.webp" size={[30, 9]} relief={0.3} edge={0.01} position={[0, -0.08, -0.6]} sun={SUN4} haze={0.05} palette={BANK} segments={[96, 48]} />
-      <Terrain dem="/tex/dem/ridge-h.webp" size={[26, 26]} relief={7.5} floor={0.05} position={[17, -0.35, -31]} yaw={0.9} sun={SUN4} haze={0.34} palette={RIDGE} />
+      <Terrain dem="/tex/dem/ridge-h.webp" size={[26, 26]} relief={7.5} floor={0.05} position={[19, -0.6, -38]} yaw={0.9} sun={SUN4} haze={0.52} palette={RIDGE} />
       <Terrain dem="/tex/dem/alps-h.webp" size={[240, 60]} relief={17} floor={0.12} position={[-10, -0.4, -125]} yaw={Math.PI} sun={SUN4} haze={0.30} palette={ALPS} />
       <GrassMedium02Field instances={grassField()} sunFrom={[4, 6, -3]} sunColor="#fff2dc" sway={0.012} translucency={1.6} />
       {FLOWERS.map((f, i) => (

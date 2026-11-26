@@ -69,16 +69,16 @@ export function Scene5Desert() {
       <ScanPalm height={1.9} position={[3.8, 0, -13.5]} yaw={1.1} />
       {/* the ruins: weathered sandstone columns, a lintel and fallen blocks on the left, as in the panel */}
       {[
-        [-2.35, -5.1, 4.4, 0.85, 0.04],
-        [-3.05, -5.45, 3.6, 0.72, -0.10],
-        [-1.75, -6.1, 3.0, 0.62, 0.14],
-        [-3.7, -6.3, 2.4, 0.55, -0.04],
+        [-1.55, -4.15, 5.4, 0.95, 0.04],
+        [-2.15, -4.45, 4.3, 0.80, -0.10],
+        [-1.05, -4.95, 3.4, 0.68, 0.14],
+        [-2.75, -5.25, 2.8, 0.58, -0.04],
       ].map(([x, z, h, w, tilt], i) => (
-        <Fit key={`col-${i}`} size={w} position={[x, 0, z]} rotation={[tilt, i * 0.5, tilt * 0.6]} tint="#e8c49a" emissive={['#8a5a36', 0.35]} stretch={h / w}>
+        <Fit key={`col-${i}`} size={w} position={[x, 0.55, z]} rotation={[tilt, i * 0.5, tilt * 0.6]} tint="#e8c49a" emissive={['#8a5a36', 0.35]} stretch={h / w}>
           <SandRocksSmall01 />
         </Fit>
       ))}
-      <group position={[-2.7, 4.25, -5.25]} rotation={[0, 0.15, 0.02]}>
+      <group position={[-1.85, 5.15, -4.3]} rotation={[0, 0.15, 0.02]}>
         <Fit size={2.0} tint="#e2bd92" emissive={['#8a5a36', 0.3]} stretch={0.32}>
           <SandRocksSmall01 />
         </Fit>

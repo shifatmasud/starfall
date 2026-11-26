@@ -98,11 +98,11 @@ void main() {
   // the glass body: the ball holds the light it scatters, so it is a luminous body with a clear form —
   // a shadowed cool side toward the planet, a sun-struck side toward the star — never a grey disc
   float sunLit = smoothstep(-0.55, 0.95, dot(N, L));
-  vec3 col = mix(vec3(0.10, 0.16, 0.32), vec3(1.0, 0.88, 0.68), sunLit);
+  vec3 col = mix(vec3(0.10, 0.16, 0.32), vec3(1.0, 0.90, 0.74), sunLit * 0.55);
   // the world seen through the glass, gathering toward the silhouette
-  col += inside * (0.30 + 0.70 * fres) * 1.50;
+  col += inside * (0.55 + 0.85 * fres) * 1.90;
   // the star's light caught in the lower-right of the ball, the plate's warm gold
-  col += vec3(1.0, 0.86, 0.62) * pow(max(dot(N, normalize(vec3(0.82, -0.12, 0.56))), 0.0), 2.0) * 0.50;
+  col += vec3(1.0, 0.88, 0.66) * pow(max(dot(N, normalize(vec3(0.86, -0.10, 0.50))), 0.0), 2.4) * 0.85;
 
   // a whisper of the plate's warm strata, never a brown wash across the body
   col += vec3(1.0, 0.90, 0.72) * strata * (0.03 + 0.10 * sunSide) * (0.35 + 0.65 * fres);
@@ -134,7 +134,7 @@ void main() {
   col += vec3(1.0, 0.80, 0.56) * shoulder * 0.60;
 
   // glass, not paint: transparent in the middle, gathering at the silhouette
-  float alpha = clamp(0.86 + 0.14 * fres, 0.80, 1.0);
+  float alpha = clamp(0.74 + 0.24 * fres + 0.30 * rim, 0.66, 1.0);
 
   if (uSky > 0.5) {
     // a star seen in daylight: white-hot heart, warm gold body, a cool cut rim. None of the dark
