@@ -71,7 +71,7 @@ function Scene({ layout }: { layout: Layout }) {
 
       <FrameProbe />
       <Rig layout={layout} />
-      {new URLSearchParams(location.search).has('nopost') ? null : <PostFX bloom={0.55} exposure={1.0} haze={0.22} soften={{ amount: 0.55, radius: 3.5, mist: 0.06 }} />}
+      {new URLSearchParams(location.search).has('nopost') ? null : <PostFX bloom={0.55} exposure={1.0} haze={0.22} soften={{ amount: 0.4, radius: 3.0, mist: 0.02 }} />}
     </>
   )
 }

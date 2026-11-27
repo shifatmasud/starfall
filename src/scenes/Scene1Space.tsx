@@ -53,7 +53,7 @@ function Scene({ layout }: { layout: Layout }) {
       <CrystalStarOrb layout={layout} />
       <FrameProbe />
       <Rig layout={layout} />
-      {FLAGS.nopost ? null : <PostFX bloom={FLAGS.nobloom ? 0 : 0.62} exposure={1.06} />}
+      {FLAGS.nopost ? null : <PostFX bloom={FLAGS.nobloom ? 0 : 0.62} exposure={1.06} shadowFloor="#07090f" grade={0.3} />}
     </>
   )
 }
