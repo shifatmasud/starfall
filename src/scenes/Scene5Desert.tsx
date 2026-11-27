@@ -37,6 +37,15 @@ const BOULDERS: { x: number; z: number; scale: [number, number, number]; yaw: nu
   { x: -2.45, z: -2.85, scale: [0.55, 0.28, 0.48], yaw: 2.6, seed: 15 },
   // Right shoreline cluster
   { x: 4.35, z: -5.6, scale: [0.78, 0.42, 0.65], yaw: 1.1, seed: 16 },
+  // smooth sandstone boulders strewn along the temple's foot and the far bank
+  { x: -8.1, z: -11.4, scale: [0.62, 0.34, 0.5], yaw: 0.4, seed: 21 },
+  { x: -7.0, z: -12.4, scale: [0.44, 0.24, 0.38], yaw: 2.0, seed: 22 },
+  { x: -3.6, z: -11.9, scale: [0.5, 0.28, 0.44], yaw: 1.2, seed: 23 },
+  { x: -1.4, z: -10.6, scale: [0.36, 0.2, 0.3], yaw: 2.7, seed: 24 },
+  { x: 1.6, z: -9.8, scale: [0.42, 0.22, 0.36], yaw: 0.8, seed: 25 },
+  { x: 5.6, z: -8.6, scale: [0.48, 0.26, 0.4], yaw: 1.9, seed: 26 },
+  { x: -5.2, z: -9.4, scale: [0.34, 0.2, 0.3], yaw: 2.4, seed: 27 },
+  { x: 3.2, z: -12.6, scale: [0.54, 0.3, 0.46], yaw: 0.6, seed: 28 },
 ]
 
 export function Scene5Desert() {
@@ -70,11 +79,12 @@ export function Scene5Desert() {
       clear="#e6cbb0"
       poster={{ portrait: '/poster/scene5-portrait.webp', landscape: '/poster/scene5-landscape.webp' }}
       bloom={0.34}
-      exposure={1.52}
+      exposure={1.62}
+      highlightGain={1.05}
       haze={0.08}
       shadowFloor="#241f22"
       grade={0.45}
-      saturation={0.74}
+      saturation={0.66}
       gamma={1.2}
       splitTone={{ shadow: '#7d94bb', highlight: '#ffd7a6', strength: 0.26 }}
       soften={{ amount: 0.2, radius: 2.4, mist: 0.005, mistColor: '#f5e2cc' }}
@@ -95,17 +105,25 @@ export function Scene5Desert() {
         flat={0.02}
         wind={0.14}
         fetch={300}
-        chl={0.55}
+        chl={0.9}
         metersPerUnit={0.6}
         depth={12}
         bottom={[0.12, 0.2, 0.18]}
-        tint={[0.16, 0.46, 0.48]}
+        tint={[0.08, 0.32, 0.35]}
         spread={1.5}
         sunFrom={SUN5}
         sunColor="#ffebd0"
-        lift={0.5}
-        skyBright={0.62}
-        reflGain={1.55}
+        lift={0.26}
+        skyBright={0.4}
+        reflGain={1.3}
+        rippleScale={0.65}
+        rippleStrength={0.22}
+        capillary={0.45}
+        f0Floor={0.04}
+        warmRefl={['#6da5d9', '#d9b48a', 0.32]}
+        glintSoft={0.15}
+        glintBoost={1.2}
+        basin={{ bottom: -0.68, top: 0.26 }}
       />
 
       {/* Wind-sculpted dune terrain with carved pool basin & analytical directional shadows */}

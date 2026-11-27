@@ -52,7 +52,28 @@ export function ReefFloor({ radius = 26, y = 0 }: { radius?: number; y?: number 
     g.computeVertexNormals()
     g.setAttribute('color', new THREE.BufferAttribute(col, 3))
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 })
-    applyPainterlySurface(m, { soft: 0.95, rimColor: '#cfeeff', shadowTint: '#1c4258', sunDir: [-0.1, 1, -0.2], brush: 0.95, caustics: 0.17, causticScale: 5.2 })
+    applyPainterlySurface(m, { soft: 0.95, rimColor: '#cfeeff', shadowTint: '#1c4258', sunDir: [-0.1, 1, -0.2], brush: 0.95, caustics: 0.12, causticScale: 3.2 })
+    // seabed grain: the fine granule and shell-fragment mottle the painterly brush (0.07/0.19 per
+    // unit) is too coarse to carry, so the flat foreground floor reads as sand, not a colour field
+    const prevF = m.onBeforeCompile
+    m.onBeforeCompile = (shader, renderer) => {
+      prevF(shader, renderer)
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          vec2 gp = vPaintWorldPos.xz;
+          float g1 = pNoise2(gp * 7.3 + 2.1);
+          float g2 = pNoise2(mat2(0.8, -0.6, 0.6, 0.8) * gp * 19.0 - 4.7);
+          float grain = (g1 * 0.6 + g2 * 0.4) * 0.26 + 0.02 * sin(gp.x * 41.0 + gp.y * 27.0);
+          diffuseColor.rgb *= 1.0 + grain;
+          // a few bright shell fragments
+          float shell = smoothstep(0.86, 1.0, g2) * 0.35;
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.86), shell);
+        }`,
+      )
+    }
+    m.customProgramCacheKey = () => 'reef-floor-grain-v1'
     return { geo: g, mat: m }
   }, [radius, y])
   return <mesh geometry={geo} material={mat} position={[0, 0, 0]} />
@@ -338,6 +359,151 @@ export function ReefLife() {
       <instancedMesh ref={coral2Ref} args={[coralGeo2, mat, 5]} />
       <instancedMesh ref={fanRef} args={[fanGeo, mat, placements.fans.length]} />
       <instancedMesh ref={kelpRef} args={[kelpGeo, mat, placements.kelp.length]} />
+    </group>
+  )
+}
+
+/** the warm pool the orb throws on the sand: an additive, edgeless disc of light under its base */
+export function WarmPool({ position = [0, 0.02, -2.2], radius = 1.9, color = '#ffe0a6', strength = 0.32 }: {
+  position?: [number, number, number]
+  radius?: number
+  color?: string
+  strength?: number
+}) {
+  const mat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: { uCol: { value: new THREE.Color(color) }, uA: { value: strength } },
+        vertexShader: /* glsl */ 'varying vec2 vUv; void main(){ vUv = uv * 2.0 - 1.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: /* glsl */ `
+          varying vec2 vUv; uniform vec3 uCol; uniform float uA;
+          void main(){
+            float r = length(vUv);
+            float glow = pow(1.0 - smoothstep(0.0, 1.0, r), 2.4);
+            // two terms: the hot core at the orb's foot and a wide warm falloff over the sand
+            float core = pow(1.0 - smoothstep(0.0, 0.42, r), 2.0);
+            float a = (glow * 0.7 + core * 0.6) * uA;
+            gl_FragColor = vec4(uCol * a, a);
+          }`,
+      }),
+    [color, strength],
+  )
+  return (
+    <mesh material={mat} position={position} rotation={[-Math.PI / 2, 0, 0]} renderOrder={3} scale={[radius, radius, 1]}>
+      <planeGeometry args={[2, 2]} />
+    </mesh>
+  )
+}
+
+/** smooth.cobbles and soft coral cushions framing the orb's base, merged into two draws */
+export function SeabedScatter({
+  cobbles = 46,
+  cushions = 18,
+  sunDir = [-0.15, 0.95, -0.25],
+}: {
+  cobbles?: number
+  cushions?: number
+  sunDir?: [number, number, number]
+}) {
+  const { cGeo, cMat, sGeo, sMat } = useMemo(() => {
+    const rand = mulberry32(77)
+    const cobbleBase = new THREE.SphereGeometry(1, 13, 8)
+    {
+      const pos = cobbleBase.attributes.position as THREE.BufferAttribute
+      const cols = new Float32Array(pos.count * 3)
+      const cLow = new THREE.Color('#24404c')
+      const cTop = new THREE.Color('#7f9a96')
+      const tmp = new THREE.Color()
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i)
+        const y = pos.getY(i)
+        const z = pos.getZ(i)
+        const n = Math.sin(x * 2.9) * 0.06 + Math.cos(z * 3.3) * 0.05
+        pos.setXYZ(i, x * (1 + n), (y > -0.2 ? y * 0.7 : y) * (1 + n), z * (1 + n))
+        const up = THREE.MathUtils.clamp(y * 0.5 + 0.5, 0, 1)
+        tmp.copy(cLow).lerp(cTop, up * 0.9)
+        cols[i * 3] = tmp.r
+        cols[i * 3 + 1] = tmp.g
+        cols[i * 3 + 2] = tmp.b
+      }
+      pos.needsUpdate = true
+      cobbleBase.setAttribute('color', new THREE.BufferAttribute(cols, 3))
+      cobbleBase.computeVertexNormals()
+    }
+
+    const parts: THREE.BufferGeometry[] = []
+    const m4 = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    for (let i = 0; i < cobbles; i++) {
+      const a = rand() * Math.PI * 2
+      const r = 2.4 + Math.pow(rand(), 0.6) * 4.2
+      const x = Math.cos(a) * r
+      const z = -2.6 + Math.sin(a) * r * 0.8
+      const s = 0.07 + 0.13 * rand()
+      const g = cobbleBase.clone()
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand() * Math.PI * 2)
+      m4.compose(new THREE.Vector3(x, s * 0.28, z), q, new THREE.Vector3(s, s * (0.6 + 0.4 * rand()), s * (0.8 + 0.4 * rand())))
+      g.applyMatrix4(m4)
+      parts.push(g)
+    }
+    const cGeo = mergeGeometries(parts, false)
+    parts.forEach((g) => g.dispose())
+
+    const cushionBase = new THREE.SphereGeometry(1, 16, 10)
+    {
+      const pos = cushionBase.attributes.position as THREE.BufferAttribute
+      const cols = new Float32Array(pos.count * 3)
+      const cLow = new THREE.Color('#5c3a52')
+      const cMid = new THREE.Color('#8e5a6e')
+      const cTop = new THREE.Color('#d9a2a0')
+      const tmp = new THREE.Color()
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i)
+        const y = pos.getY(i)
+        const z = pos.getZ(i)
+        const ang = Math.atan2(z, x)
+        const lobes = 1 + 0.1 * Math.sin(ang * 7) + 0.06 * Math.sin(ang * 12 + 1.4)
+        pos.setXYZ(i, x * lobes, Math.max(y, -0.1) * 0.55 + 0.1, z * lobes)
+        const up = THREE.MathUtils.clamp(y * 0.5 + 0.5, 0, 1)
+        tmp.copy(cLow).lerp(cMid, up * 0.8).lerp(cTop, Math.pow(up, 2.0) * 0.7)
+        cols[i * 3] = tmp.r
+        cols[i * 3 + 1] = tmp.g
+        cols[i * 3 + 2] = tmp.b
+      }
+      pos.needsUpdate = true
+      cushionBase.setAttribute('color', new THREE.BufferAttribute(cols, 3))
+      cushionBase.computeVertexNormals()
+    }
+    const sparts: THREE.BufferGeometry[] = []
+    for (let i = 0; i < cushions; i++) {
+      const a = rand() * Math.PI * 2
+      const r = 2.6 + rand() * 3.2
+      const x = Math.cos(a) * r
+      const z = -2.8 + Math.sin(a) * r * 0.78
+      const s = 0.13 + 0.14 * rand()
+      const g = cushionBase.clone()
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rand() * Math.PI * 2)
+      m4.compose(new THREE.Vector3(x, 0.02, z), q, new THREE.Vector3(s, s, s))
+      g.applyMatrix4(m4)
+      sparts.push(g)
+    }
+    const sGeo = mergeGeometries(sparts, false)
+    sparts.forEach((g) => g.dispose())
+
+    const cMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 })
+    applyPainterlySurface(cMat, { soft: 0.95, rimColor: '#b8ecff', shadowTint: '#1b4258', sunDir, brush: 0.9, caustics: 0.1, causticScale: 4.2 })
+    const sMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 })
+    applyPainterlySurface(sMat, { soft: 0.95, rimColor: '#ffd9e4', shadowTint: '#2a4a5c', sunDir, brush: 0.9, caustics: 0.08, causticScale: 4.6 })
+    return { cGeo, cMat, sGeo, sMat }
+  }, [cobbles, cushions, sunDir])
+
+  return (
+    <group>
+      <mesh geometry={cGeo} material={cMat} />
+      <mesh geometry={sGeo} material={sMat} />
     </group>
   )
 }

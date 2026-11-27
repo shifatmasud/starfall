@@ -84,12 +84,11 @@ export type PineShadowCaster = {
   height: number
 }
 
-/** 5-blade foreground turf tuft (30 tris/tuft) with warm golden-chartreuse sunlit tips */
+/** 5-blade foreground turf tuft (10 tris/tuft) with warm golden-chartreuse sunlit tips */
 function buildForegroundTurfGeometry(): THREE.BufferGeometry {
   const blades: THREE.BufferGeometry[] = []
   const count = 5
   const cRoot = new THREE.Color('#5a7830')
-  const cMid = new THREE.Color('#a2c25a')
   const cTip = new THREE.Color('#eaefa6')
   const tmp = new THREE.Color()
 
@@ -98,47 +97,31 @@ function buildForegroundTurfGeometry(): THREE.BufferGeometry {
     const h = 0.10 + (b % 3) * 0.018
     const lean = 0.055 + (b % 3) * 0.026
     const wBase = 0.0085
-    const segs = 3
-
-    const positions: number[] = []
-    const normals: number[] = []
-    const colors: number[] = []
-    const indices: number[] = []
+    const wTip = wBase * 0.06
 
     const dx = Math.cos(az)
     const dz = Math.sin(az)
     const px = -dz
     const pz = dx
 
-    for (let s = 0; s <= segs; s++) {
-      const t = s / segs
-      const w = wBase * (1 - t * 0.94)
-      const bend = Math.pow(t, 1.6) * lean
-      const cx = dx * bend
-      const cy = h * t * (1 - 0.14 * t)
-      const cz = dz * bend
+    // one tapered quad, bent at the tip: two triangles per blade, the curve carried by the lean
+    const tx = dx * lean
+    const ty = h * 0.97
+    const tz = dz * lean
 
-      positions.push(cx - px * w, cy, cz - pz * w, cx + px * w, cy, cz + pz * w)
-      normals.push(dx * 0.28, 0.92, dz * 0.28, dx * 0.28, 0.92, dz * 0.28)
-
-      tmp
-        .copy(cRoot)
-        .lerp(cMid, THREE.MathUtils.smoothstep(t, 0.0, 0.45))
-        .lerp(cTip, THREE.MathUtils.smoothstep(t, 0.38, 1.0))
-      colors.push(tmp.r, tmp.g, tmp.b, tmp.r, tmp.g, tmp.b)
-
-      if (s < segs) {
-        const r0 = s * 2
-        const r1 = (s + 1) * 2
-        indices.push(r0, r1, r0 + 1, r0 + 1, r1, r1 + 1)
-      }
-    }
+    const positions = [px * wBase, 0, pz * wBase, -px * wBase, 0, -pz * wBase, tx + px * wTip, ty, tz + pz * wTip, tx - px * wTip, ty, tz - pz * wTip]
+    const normals = [dx * 0.28, 0.92, dz * 0.28, dx * 0.28, 0.92, dz * 0.28, dx * 0.28, 0.92, dz * 0.28, dx * 0.28, 0.92, dz * 0.28]
+    const colors: number[] = []
+    tmp.copy(cRoot)
+    colors.push(tmp.r, tmp.g, tmp.b, tmp.r, tmp.g, tmp.b)
+    tmp.copy(cRoot).lerp(cTip, 0.92)
+    colors.push(tmp.r, tmp.g, tmp.b, tmp.r, tmp.g, tmp.b)
 
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
     g.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
     g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-    g.setIndex(indices)
+    g.setIndex([0, 1, 2, 1, 3, 2])
     blades.push(g)
   }
 
@@ -154,7 +137,7 @@ function buildButtercupGeometry(): THREE.BufferGeometry {
   const cBloom = new THREE.Color('#f7d864')
   const cBloomTip = new THREE.Color('#fff4ae')
 
-  const stem = new THREE.CylinderGeometry(0.002, 0.003, 0.11, 4)
+  const stem = new THREE.CylinderGeometry(0.002, 0.003, 0.11, 4, 1, true)
   stem.translate(0, 0.055, 0)
   const sPos = stem.attributes.position as THREE.BufferAttribute
   const sCols = new Float32Array(sPos.count * 3)
@@ -166,7 +149,7 @@ function buildButtercupGeometry(): THREE.BufferGeometry {
   stem.setAttribute('color', new THREE.BufferAttribute(sCols, 3))
   parts.push(stem)
 
-  const cup = new THREE.SphereGeometry(0.015, 7, 5)
+  const cup = new THREE.SphereGeometry(0.015, 6, 4)
   cup.scale(1.1, 0.5, 1.1)
   cup.translate(0, 0.112, 0)
   const cPos = cup.attributes.position as THREE.BufferAttribute
@@ -260,13 +243,15 @@ export function LakeGround({
         tmp.lerp(cMeadowWarm, THREE.MathUtils.smoothstep(patch, 0.42, 0.82) * 0.72)
         tmp.lerp(cMeadowDeep, THREE.MathUtils.smoothstep(deepPocket, 0.48, 0.85) * 0.68)
 
-        // Bright pebbly strip right above the wet shoreline (y = 0.035..0.105) matching ref4_shore
+        // Bright pebbly strip just above the wet band (y = 0.05..0.16) matching ref4_shore
         const pebbleBand =
-          THREE.MathUtils.smoothstep(y, 0.03, 0.058) * (1 - THREE.MathUtils.smoothstep(y, 0.07, 0.12))
-        tmp.lerp(cPebbleShore, pebbleBand * 0.68)
+          THREE.MathUtils.smoothstep(y, 0.045, 0.075) * (1 - THREE.MathUtils.smoothstep(y, 0.10, 0.17))
+        tmp.lerp(cPebbleShore, pebbleBand * 0.62)
 
-        const wet = 1 - THREE.MathUtils.smoothstep(y, 0.02, 0.055)
-        tmp.lerp(cWetShore, wet * 0.86)
+        // the wet bank: 0.45 m of soaked turf and sand above the waterline, never a 3 cm line
+        const wet = 1 - THREE.MathUtils.smoothstep(y, 0.02, 0.47)
+        tmp.lerp(cWetShore, Math.pow(wet, 1.5) * 0.52)
+        tmp.multiplyScalar(1 - 0.1 * wet * wet)
       }
 
       if (y > 0.01 && z > -35) {
@@ -325,12 +310,12 @@ export function LakeGround({
           float camD = length(vPaintWorldPos - cameraPosition);
           float detailFade = 1.0 - smoothstep(2.0, 22.0, camD);
           vec2 p = vPaintWorldPos.xz;
-          float clump = sin(p.x * 10.5 + sin(p.y * 7.2) * 1.9);
-          float blades1 = sin(p.x * 38.0 + p.y * 22.0);
-          float blades2 = cos(p.y * 44.0 - p.x * 29.0);
-          float mottle = (clump * 0.38 + blades1 * 0.34 + blades2 * 0.28) * 0.34 * detailFade;
+          // two octaves of the brush's own gradient field: clumps of blades, never a plaid of sines
+          float clump = pNoise2(p * 2.6 + 3.1);
+          float fine = pNoise2(mat2(0.8, -0.6, 0.6, 0.8) * p * 8.5 - 1.7);
+          float mottle = (clump * 0.62 + fine * 0.38) * 0.2 * detailFade;
           diffuseColor.rgb *= 1.0 + mottle;
-          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.54, 0.70, 0.50), smoothstep(0.02, 0.20, -mottle));
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.72, 0.84, 0.68), smoothstep(0.0, -0.12, mottle));
         }`,
       )
     }

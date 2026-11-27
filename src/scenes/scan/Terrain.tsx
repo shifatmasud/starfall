@@ -12,6 +12,9 @@ import * as THREE from 'three'
  */
 
 type Field = { data: Float32Array; w: number; h: number }
+
+/** the colour a hillside's conifer belt reads as from a distance */
+const FOREST_DARK = new THREE.Color('#2c4a34')
 const cache = new Map<string, Promise<Field>>()
 
 function loadField(url: string): Promise<Field> {
@@ -66,6 +69,7 @@ export function Terrain({
   floor = 0,
   flipX = false,
   basins = [],
+  forest = 0,
 }: {
   dem: string
   /** world width (x) and depth (z) of the crop */
@@ -86,6 +90,8 @@ export function Terrain({
   flipX?: boolean
   /** world [x, z, radius] hollows pressed down to the floor (a pool's basin, a clearing), eased at their rims */
   basins?: [number, number, number][]
+  /** a forest belt painted into the hillside's own colours, 0..1 (dense dark conifer cover) */
+  forest?: number
 }) {
   const [field, setField] = useState<Field | null>(null)
   useEffect(() => {
@@ -174,6 +180,17 @@ export function Terrain({
         c.lerp(tcol, band * 0.75)
         c.multiplyScalar(0.94 + 0.12 * n2)
       }
+      if (forest > 0) {
+        // the forest belt on the hillside: dark conifer cover in clumps, low on the slope, thinning
+        // at the ridge — painted into the ground's own colour the way the reference's belt reads
+        const fx = pos[k * 3] * 0.62 + 11.3, fz = pos[k * 3 + 2] * 0.62 - 4.7
+        const f1 = Math.sin(fx * 3.1 + Math.sin(fz * 2.7) * 2.4) * 0.5 + 0.5
+        const f2 = Math.sin(fz * 3.9 - fx * 2.3 + Math.sin(fx * 3.1)) * 0.5 + 0.5
+        const band = THREE.MathUtils.smoothstep(hts[k], 0.08, 0.22) * (1 - THREE.MathUtils.smoothstep(hts[k], 0.5, 0.78))
+        const cover = Math.pow(f1 * 0.58 + f2 * 0.42, 1.5) * band
+        c.lerp(FOREST_DARK, cover * forest * 1.15)
+        c.multiplyScalar(1 - cover * forest * 0.12)
+      }
       c.lerp(air, Math.min(0.9, haze * (0.6 + 0.8 * (1 - hts[k]))))
       colors[k * 3] = c.r
       colors[k * 3 + 1] = c.g
@@ -183,10 +200,54 @@ export function Terrain({
     geo.computeBoundingSphere()
     return geo
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field, size[0], size[1], relief, yaw, sun[0], sun[1], sun[2], palette, haze, segments[0], segments[1], edge, floor, flipX, JSON.stringify(basins), position[0], position[2]])
+  }, [field, size[0], size[1], relief, yaw, sun[0], sun[1], sun[2], palette, haze, segments[0], segments[1], edge, floor, flipX, JSON.stringify(basins), position[0], position[2], forest])
 
   const material = useMemo(() => new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }), [])
   useEffect(() => () => material.dispose(), [material])
   if (!geometry) return null
   return <mesh geometry={geometry} material={material} position={position} frustumCulled={false} />
+}
+
+/**
+ * A world-space height sampler for a Terrain, sharing its cached field: the exact surface the mesh
+ * draws, so trees and props can stand on the real hillside instead of being placed by eye.
+ */
+export type TerrainSampler = (x: number, z: number) => number
+
+export function makeTerrainSampler(opts: {
+  dem: string
+  size: [number, number]
+  relief: number
+  position: [number, number, number]
+  yaw?: number
+  floor?: number
+  edge?: number
+  flipX?: boolean
+}): Promise<TerrainSampler> {
+  const { dem, size, relief, position, yaw = 0, floor = 0, edge = 0.1, flipX = false } = opts
+  return loadField(dem).then(({ data, w, h }) => {
+    const sample = (u: number, v: number) => {
+      const fx = Math.min(w - 1, Math.max(0, (flipX ? 1 - u : u) * (w - 1)))
+      const fy = Math.min(h - 1, Math.max(0, v * (h - 1)))
+      const ix = Math.floor(fx), iy = Math.floor(fy)
+      const tx = fx - ix, ty = fy - iy
+      const i1 = Math.min(w - 1, ix + 1), j1 = Math.min(h - 1, iy + 1)
+      return (data[iy * w + ix] * (1 - tx) + data[iy * w + i1] * tx) * (1 - ty) + (data[j1 * w + ix] * (1 - tx) + data[j1 * w + i1] * tx) * ty
+    }
+    return (x: number, z: number) => {
+      const dx = x - position[0]
+      const dz = z - position[2]
+      // undo the mesh's yaw, then its centring
+      const lx = dx * Math.cos(yaw) - dz * Math.sin(yaw)
+      const lz = dx * Math.sin(yaw) + dz * Math.cos(yaw)
+      const u = lx / size[0] + 0.5
+      const v = lz / size[1] + 0.5
+      if (u < 0 || u > 1 || v < 0 || v > 1) return position[1]
+      const ex = Math.min(u, 1 - u)
+      const ey = Math.min(v, 1 - v)
+      const fall = Math.min(1, Math.min(ex, ey) / edge)
+      const hv = Math.max(0, (sample(u, v) - floor) / (1 - floor)) * fall * fall * (3 - 2 * fall)
+      return hv * relief - 0.02 * relief + position[1]
+    }
+  })
 }

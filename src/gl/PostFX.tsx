@@ -74,6 +74,7 @@ float bnoise(vec2 p) {
  */
 const FinalShader = /* glsl */ `
 uniform float uExposure;
+uniform float uHighlightGain;
 uniform float uGrade;
 uniform float uTime;
 uniform vec3 uShadowFloor;
@@ -117,6 +118,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
   // a breath of contrast compression: raw scan contrast is the enemy
   col = (col - 0.5) * mix(1.0, 1.06, uGrade) + 0.5;
+
+  // a highlight lift: the sunlit crests and warm stone gain a little headroom without moving the
+  // shadow end of the curve
+  col *= mix(1.0, uHighlightGain, smoothstep(0.42, 0.96, luma709(clamp(col, 0.0, 1.0))));
 
   // split tone: the shadows cool toward the sky's bounce, the highlights warm toward the sun,
   // each normalised to its own luminance so the tone curve keeps its shape
@@ -311,6 +316,7 @@ class FinalEffect extends Effect {
       blendFunction: BlendFunction.SRC,
       uniforms: new Map<string, THREE.Uniform>([
         ['uExposure', new THREE.Uniform(exposure)],
+        ['uHighlightGain', new THREE.Uniform(1)],
         ['uGrade', new THREE.Uniform(0.65)],
         ['uTime', new THREE.Uniform(0)],
         ['uShadowFloor', new THREE.Uniform(new THREE.Color('#1a2230'))],
@@ -357,6 +363,8 @@ export type PostFXProps = {
   grade?: number
   /** saturation trim applied after the pastel roll-off (1 = as graded) */
   saturation?: number
+  /** gain on the upper half of the curve (1 = untouched) */
+  highlightGain?: number
   /** warm-highlight / cool-shadow split tone: the tint colours and how far the split runs (0..1) */
   splitTone?: { shadow?: string; highlight?: string; strength?: number }
   /** a lifted black point: values below it are crushed to the shadow floor */
@@ -379,6 +387,7 @@ export function PostFX({
   shadowFloor = '#1a2230',
   grade = 0.65,
   saturation = 1,
+  highlightGain = 1,
   splitTone,
   blackPoint = 0,
   gamma = 1,
@@ -509,6 +518,8 @@ export function PostFX({
     ;(composer.final.uniforms.get('uShadowFloor')!.value as THREE.Color).set(shadowFloor)
     const uSat = composer.final.uniforms.get('uSaturation')
     if (uSat) uSat.value = saturation
+    const uHG = composer.final.uniforms.get('uHighlightGain')
+    if (uHG) uHG.value = highlightGain
     const uTone = composer.final.uniforms.get('uSplitTone')
     if (uTone) uTone.value = splitTone?.strength ?? 0.15
     ;(composer.final.uniforms.get('uShadowTint')!.value as THREE.Color).set(splitTone?.shadow ?? '#8ea6c4')
@@ -517,7 +528,7 @@ export function PostFX({
     if (uBP) uBP.value = blackPoint
     const uG = composer.final.uniforms.get('uGamma')
     if (uG) uG.value = gamma
-  }, [composer, bloom, exposure, haze, grade, shadowFloor, saturation, splitTone?.strength, splitTone?.shadow, splitTone?.highlight, blackPoint, gamma, soften?.amount, soften?.radius, soften?.mist, soften?.mistColor, gl])
+  }, [composer, bloom, exposure, haze, grade, shadowFloor, saturation, highlightGain, splitTone?.strength, splitTone?.shadow, splitTone?.highlight, blackPoint, gamma, soften?.amount, soften?.radius, soften?.mist, soften?.mistColor, gl])
 
   // The chain runs at the canvas's own device resolution, capped by a pixel budget: several RGBA16F
   // buffers at full phone resolution is how a phone loses its context.

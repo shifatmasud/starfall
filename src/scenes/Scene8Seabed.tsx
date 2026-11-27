@@ -1,7 +1,7 @@
 import { ScanScene } from './scan/ScanScene'
 import { Fit } from './scan/Fit'
 import { LambisShell } from '../scans/models/LambisShell'
-import { ReefFloor, ReefRock, ReefLife } from './reef/Reef'
+import { ReefFloor, ReefRock, ReefLife, SeabedScatter, WarmPool } from './reef/Reef'
 import { SoftShadow } from './scan/SoftShadow'
 
 /**
@@ -27,13 +27,13 @@ export function Scene8Seabed() {
       fill={{ ground: '#2a6280', intensity: 2.3 }}
       camera={{ position: [0, 0.55, 0], target: [0, 0.25, -2.4], fov: 50 }}
       orb={{ position: [0, 0.22, -2.2], radius: 0.18 }}
-      look={{ light: [-0.2, 1], tint: '#dcf4ff', rim: '#d8f4ff', haloColor: '#9ee0ff', halo: 0.42, bob: 0, bend: 2.15, gain: 1.08, core: [0.22, 0.16, 0.09] }}
+      look={{ light: [-0.2, 1], tint: '#d8f0ff', rim: '#eafaff', haloColor: '#ffe0b0', halo: 0.5, bob: 0, bend: 2.15, gain: 1.14, core: [0.46, 0.36, 0.2] }}
       rays={{ x: 0.48, y: 1.15, color: '#b6ecff', strength: 0.42, haze: 0.2 }}
-      glow={{ color: '#ffc07a', intensity: 1.6, distance: 7, decay: 1.3 }}
+      glow={{ color: '#ffdca8', intensity: 2.4, distance: 11, decay: 2 }}
       clear="#0a3858"
       poster={{ portrait: '/poster/scene8-portrait.webp', landscape: '/poster/scene8-landscape.webp' }}
       bloom={0.42}
-      exposure={1.34}
+      exposure={1.42}
       haze={0.13}
       shadowFloor="#1a3552"
       grade={0.45}
@@ -49,6 +49,8 @@ export function Scene8Seabed() {
       <ReefRock position={[2.8, -0.12, -4.2]} scale={[1.7, 1.1, 1.5]} seed={7} />
       <ReefRock position={[-3.9, -0.3, -7.4]} scale={[2.4, 1.5, 2.0]} seed={11} />
       <ReefRock position={[3.7, -0.28, -7.8]} scale={[2.2, 1.4, 1.9]} seed={15} />
+      <WarmPool position={[0, 0.02, -2.2]} radius={1.9} color="#ffe0a6" strength={0.34} />
+      <SeabedScatter cobbles={46} cushions={18} sunDir={SUN8} />
       <ReefLife />
       <Fit size={0.2} position={[0.42, 0.02, -1.85]} rotation={[0, 0.8, 0]} tint="#cfe0e4" soft={0.85} rimColor="#9ce4ff" shadowTint="#16384a" sunDir={SUN8}>
         <LambisShell />

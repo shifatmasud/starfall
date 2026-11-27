@@ -84,6 +84,22 @@ export type WaterProps = {
   skyBright?: number
   /** brightness of the reflected sky, painterly */
   reflGain?: number
+  /** scale of the soft capillary ripple layer laid over the measured spectrum */
+  rippleScale?: number
+  /** strength of that capillary layer in the shading normal */
+  rippleStrength?: number
+  /** how far the capillary layer replaces the spectrum normal (0 = spectra only) */
+  capillary?: number
+  /** Fresnel floor at normal incidence (physical water is 0.020) */
+  f0Floor?: number
+  /** warm sky/dune bounce reflected in a shallow pool: zenith, sand and how far it blends in */
+  warmRefl?: [string, string, number]
+  /** widen the sun glint into a soft sheen (0 = the measured Cox–Munk lobe) */
+  glintSoft?: number
+  /** sun-glint gain */
+  glintBoost?: number
+  /** the shallow basin's sand height, so the pool dissolves where the real ground crosses the water */
+  basin?: { bottom: number; top: number }
 }
 
 const VERT = /* glsl */ `
@@ -107,6 +123,8 @@ uniform vec2 uPoolC;
 uniform sampler2D uRefl, uRefr; uniform mat4 uReflVP, uMainVP; uniform float uUseRefl, uUseRefr, uShore, uNear, uSparkle, uSkyBright, uReflGain, uRefrDepth;
 uniform vec2 uAt; uniform float uEncode;
 uniform vec3 uA, uBb, uB, uRinf, uKd, uBottom, uSunDir, uSunCol, uAWater, uTint;
+uniform float uRippleScale, uRippleStrength, uCapillary, uF0Floor, uGlintSoft, uGlintBoost, uWaterY, uBasinBottom, uBasinTop;
+uniform vec3 uWarmA, uWarmB; uniform float uWarmMix;
 const float PI = 3.14159265;
 // colour pipeline: everything below is computed in LINEAR light. The HDRI is an sRGB texture (decoded by the
 // sampler), the reflection/refraction targets are linear data buffers, the sun colour arrives linear (THREE.Color),
@@ -168,8 +186,19 @@ void main(){
   grad += (vec2(d1.y, d1.z) * 0.75 + vec2(d2.y, d2.z) * 0.45) * uDetail;
   vec3 N = normalize(vec3(-grad.x, 1.0 - uQ * vert, -grad.y));
   N = normalize(mix(N, vec3(0.,1.,0.), clamp(dist * uFlat, 0.0, 0.85)));
+  // two octaves of soft, slowly scrolling capillary chop, laid OVER the measured spectrum normals:
+  // the buoy spectrum still carries the swell's energy and direction, this only adds the fine wind
+  // texture that makes the surface catch the sky
+  if (uCapillary > 0.001) {
+    vec2 rp = vW.xz * uMpu * uRippleScale;
+    vec3 c1 = vnd(rp + vec2(uTime * 0.03, uTime * 0.02));
+    vec3 c2 = vnd(rp * 2.13 - vec2(uTime * 0.02, uTime * 0.04));
+    float k = uRippleStrength * uCapillary;
+    vec2 capG = vec2(c1.y, c1.z) + vec2(c2.y, c2.z) * 0.5;
+    N = normalize(vec3(N.x + capG.x * k, N.y, N.z + capG.y * k));
+  }
   float cv = clamp(dot(N, V), 0.02, 1.0);
-  float F = fresnel(cv, uIor);
+  float F = max(fresnel(cv, uIor), uF0Floor);
   // reflection of the photographed sky
   vec3 R = reflect(-V, N); R.y = max(abs(R.y), 0.2);   // the sampled sky stays above the horizon haze band
   // the water also mirrors the bright horizon band through the finer ripples the footprint averages away
@@ -178,6 +207,11 @@ void main(){
   // clear-sky gradient (Rayleigh-blue zenith, pale horizon): lifts a dark photographed horizon band
   vec3 clearSky = srgbToLinear(mix(vec3(0.62,0.78,1.0), vec3(0.28,0.56,0.9), pow(clamp(R.y,0.,1.), 0.5))) * uReflGain;
   refl = mix(refl, clearSky, uSkyBright) * uReflGain;
+  if (uWarmMix > 0.001) {
+    // a shallow pool mirrors the warm sand of its own banks as much as the sky
+    float low = 1.0 - clamp(R.y * 1.6, 0.0, 1.0);
+    refl = mix(refl, srgbToLinear(mix(uWarmA, uWarmB, low)) * uReflGain, uWarmMix);
+  }
   // painterly knee: a mirrored sun or a bright sky gap must not blow out to a white column
   refl = refl / (1.0 + max(max(refl.r, refl.g), refl.b) * 0.85);
   vec4 clipM = uMainVP * vec4(vW, 1.0);
@@ -192,18 +226,25 @@ void main(){
   }
   // sun glint: Blinn lobe with Cox–Munk slope variance
   vec3 Hh = normalize(uSunDir + V);
-  float expo = 2.0 / max(uMss * 0.5, 1e-3) - 2.0;
+  float expo = mix(2.0 / max(uMss * 0.5, 1e-3) - 2.0, 110.0, uGlintSoft);
   float glint = pow(max(dot(N, Hh), 0.0), expo) * (expo + 2.0) / (8.0*PI) * F * max(uSunDir.y, 0.0);
   // water-leaving radiance: irradiance reflectance (Gordon) lit by sky + sun
   vec3 skyAvg = sky(vec3(0.,1.,0.), 7.0) * 0.6 + sky(normalize(vec3(uSunDir.x, 0.5, uSunDir.z)), 7.0) * 0.4;
   float cs = max(uSunDir.y, 0.15);
   vec3 Ed = skyAvg + uSunCol * 3.2 * cs;            // direct:diffuse of a clear sky (Gregg & Carder 1990 ~ 3-5)
   float depth = uDepth;
+  float shallowD = 1e3;
   if (uPool > 0.5){
-    float r = length((vW.xz - uPoolC) / vec2(uPoolStretch, 1.0)) / uPoolR;
+    vec2 pd = (vW.xz - uPoolC) / vec2(uPoolStretch, 1.0);
+    float r = length(pd) / uPoolR;
     depth = max(uDepth * (1.0 - r*r), 0.02);
-    // the bowl the water sits in: the surface dissolves over the shallow sand at the shore
-    depth = max(depth, 0.0);
+    // the real basin: the same edge-noise and height the sand was carved with, so the water ends
+    // exactly where the ground rises through it instead of on a traced ellipse
+    float ae = atan(pd.y, pd.x);
+    float eN = 1.0 + 0.14 * sin(ae * 2.0 + 0.5) + 0.09 * cos(ae * 3.0 - 0.8) + 0.04 * sin(ae * 5.0 + 1.4);
+    float rN = length(pd) / uPoolR / eN;
+    float ground = mix(uBasinBottom, uBasinTop, smoothstep(0.25, 1.18, rN));
+    shallowD = uWaterY - ground;
   }
   if (uShore > 0.0){
     float rr0 = length(vW.xz - uAt);
@@ -247,16 +288,17 @@ void main(){
     }
     glit *= F * 14.0 * uSparkle * smoothstep(0.0, 0.15, uSunDir.y);
   }
-  vec3 col = F * refl + (1.0 - F) * under + uSunCol * (glint * 1.1 + glit);
+  vec3 col = F * refl + (1.0 - F) * under + uSunCol * (glint * 1.1 * uGlintBoost + glit);
   // the body's own tint carries into the reflection, so a lagoon stays teal and an arctic sea cerulean at any angle
   col = mix(col, col * uTint, 0.45);
   // the shallow lip: water running out over sand dissolves through a wet band, a turquoise shelf and
   // a broken foam line — never a polygon edge you can trace with a finger
   if (uFoam > 0.5) {
-    float lip = 1.0 - smoothstep(0.0, 0.26, depth);
-    float shelf = 1.0 - smoothstep(0.0, 0.55, depth);
+    float dShow = min(depth, max(shallowD, 0.0));
+    float lip = 1.0 - smoothstep(0.0, 0.26, dShow);
+    float shelf = 1.0 - smoothstep(0.0, 0.55, dShow);
     col = mix(col, vec3(0.30, 0.62, 0.60), shelf * 0.22);
-    float riffle = 0.55 + 0.45 * sin(depth * 46.0 - uTime * 1.4 + sin(vW.x * 2.6 + vW.z * 1.7) * 2.4);
+    float riffle = 0.55 + 0.45 * sin(dShow * 46.0 - uTime * 1.4 + sin(vW.x * 2.6 + vW.z * 1.7) * 2.4);
     float lace = smoothstep(0.35, 0.9, riffle) * lip;
     col = mix(col, vec3(0.93, 0.97, 0.97), lace * 0.5);
   }
@@ -264,8 +306,8 @@ void main(){
   // the pool edge dissolves over the outer fifth of the bowl, not over the last two pixels: the
   // shallow ring carries the sand through the surface instead of a traced polygon outline
   if (uPool > 0.5) {
-    float rEdge = length((vW.xz - uPoolC) / vec2(uPoolStretch, 1.0)) / uPoolR;
-    alpha *= mix(1.0, 1.0 - smoothstep(0.80, 1.0, rEdge), uFeather);
+    // dissolve over the sand the water actually covers: 0 at the waterline, opaque 20 cm in
+    alpha *= smoothstep(-0.005, 0.2, shallowD);
   }
   outColor = vec4(uEncode > 0.5 ? linearToSrgb(col) : col, alpha);   // sRGB in the frame (the post chain reads it as display values), linear in the data targets
 }`
@@ -303,6 +345,14 @@ export function WaterPlane({
   sparkle = 1,
   skyBright = 0.35,
   reflGain = 1,
+  rippleScale = 1,
+  rippleStrength = 0.1,
+  capillary = 0,
+  f0Floor = 0.02,
+  warmRefl,
+  glintSoft = 0,
+  glintBoost = 1,
+  basin,
 }: WaterProps) {
   const gl = useThree((st) => st.gl)
   const scene = useThree((s) => s.scene)
@@ -343,9 +393,14 @@ export function WaterPlane({
         uRefl: { value: null }, uRefr: { value: null }, uReflVP: { value: new THREE.Matrix4() }, uMainVP: { value: new THREE.Matrix4() },
         uUseRefl: { value: 0 }, uUseRefr: { value: 0 }, uShore: { value: shore }, uNear: { value: near }, uAt: { value: new THREE.Vector2(at[0], at[1]) },
         uEncode: { value: 1 }, uSparkle: { value: sparkle }, uSkyBright: { value: skyBright }, uReflGain: { value: reflGain }, uRefrDepth: { value: 0.5 },
+        uRippleScale: { value: rippleScale }, uRippleStrength: { value: rippleStrength }, uCapillary: { value: capillary },
+        uF0Floor: { value: f0Floor }, uWarmA: { value: new THREE.Color(warmRefl?.[0] ?? '#6da5d9') },
+        uWarmB: { value: new THREE.Color(warmRefl?.[1] ?? '#d9b48a') }, uWarmMix: { value: warmRefl?.[2] ?? 0 },
+        uGlintSoft: { value: glintSoft }, uGlintBoost: { value: glintBoost },
+        uWaterY: { value: y }, uBasinBottom: { value: basin?.bottom ?? -0.68 }, uBasinTop: { value: basin?.top ?? 0.26 },
       },
     })
-  }, [wind, fetch, chl, metersPerUnit, depth, bottom, sunFrom, sunColor, lift, pool, far, at, windDeg, shore, near, sparkle, skyBright, reflGain, spectrum, peakWave, hs, bearing, detail, spread, bands, steep, flat, poolStretch, feather, tint[0], tint[1], tint[2]])
+  }, [wind, fetch, chl, metersPerUnit, depth, bottom, sunFrom, sunColor, lift, pool, far, at, windDeg, shore, near, sparkle, skyBright, reflGain, spectrum, peakWave, hs, bearing, detail, spread, bands, steep, flat, poolStretch, feather, tint[0], tint[1], tint[2], rippleScale, rippleStrength, capillary, f0Floor, warmRefl?.[0], warmRefl?.[1], warmRefl?.[2], glintSoft, glintBoost, basin?.bottom, basin?.top, y])
   // planar reflection + refraction targets (scans only: the photographed sky is mirrored analytically in the shader)
   const rt = useMemo(() => {
     const mk = () => {

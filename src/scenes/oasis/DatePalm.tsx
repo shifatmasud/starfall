@@ -151,9 +151,9 @@ export function DatePalm({
 
     const pos = tGeo.attributes.position as THREE.BufferAttribute
     const cols = new Float32Array(pos.count * 3)
-    const cBarkDark = new THREE.Color('#5a4334')
-    const cBarkMid = new THREE.Color('#8d6c52')
-    const cBarkCrown = new THREE.Color('#b48d68')
+    const cBarkDark = new THREE.Color('#5c4636')
+    const cBarkMid = new THREE.Color('#8a6a50')
+    const cBarkCrown = new THREE.Color('#bb9670')
     const tmp = new THREE.Color()
 
     for (let i = 0; i < pos.count; i++) {
@@ -177,7 +177,7 @@ export function DatePalm({
       const baseAO = THREE.MathUtils.smoothstep(t, 0.0, 0.14)
       const underCrownAO = 1 - THREE.MathUtils.smoothstep(t, 0.92, 1.0) * 0.35
       tmp.copy(cBarkDark).lerp(cBarkMid, baseAO).lerp(cBarkCrown, THREE.MathUtils.smoothstep(t, 0.78, 0.96))
-      tmp.multiplyScalar(0.75 + 0.25 * underCrownAO)
+      tmp.multiplyScalar(0.88 + 0.12 * underCrownAO)
 
       cols[i * 3] = tmp.r
       cols[i * 3 + 1] = tmp.g
@@ -227,10 +227,23 @@ export function DatePalm({
     applyPainterlySurface(tMat, {
       soft: 0.85,
       rimColor: '#ffe8c2',
-      shadowTint: '#5c463d',
+      shadowTint: '#6a4f3c',
       sunDir,
       brush: 0.7,
     })
+    // the sand throws its warmth straight up the trunk: without it a bark cylinder under a high sun
+    // reads as a black post, which is exactly how the oasis looked in pass 1
+    const prevTrunk = tMat.onBeforeCompile
+    tMat.onBeforeCompile = (shader, renderer) => {
+      prevTrunk(shader, renderer)
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        `vec3 trunkN = normalize(vPaintWorldNormal);
+        outgoingLight += vec3(0.24, 0.18, 0.11) * max(0.0, -trunkN.y * 0.5 + 0.5) * 0.9;
+        #include <opaque_fragment>`,
+      )
+    }
+    tMat.customProgramCacheKey = () => 'oasis-palm-trunk-bounce-v1'
 
     const fMat = new THREE.MeshStandardMaterial({
       vertexColors: true,

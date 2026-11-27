@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { applyPainterlySurface } from '../scan/Fit'
@@ -153,8 +153,103 @@ export function IceBergs({
       opacity: 0.98,
     })
     applyPainterlySurface(m, { soft: 0.9, rimColor: '#ffffff', shadowTint: '#7aa2cc', sunDir, brush: 0.55, waterY: 0, wetBand: 0.55 })
+
+    // the waterline as noise, not a sticker: a feathered vertical gradient that wanders with the
+    // berg's own surface, so the turquoise skirt melts into the ice above and the sea below
+    const prev = m.onBeforeCompile
+    m.onBeforeCompile = (shader, renderer) => {
+      prev(shader, renderer)
+      shader.uniforms.uIceWaterY = { value: 0 }
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          float wobble = pPaintFbm(vPaintWorldPos.xz * 0.8) * 0.18 + pPaintFbm(vPaintWorldPos.xz * 2.7 + 9.0) * 0.06;
+          float dy = vPaintWorldPos.y - uIceWaterY + wobble;
+          float sub = 1.0 - smoothstep(-0.5, 0.35, dy);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.6, 0.76), sub * 0.62);
+          // the band just above the sea is wet and pale, the ice below it reads through the water
+          float wetLine = (1.0 - smoothstep(0.0, 0.14, abs(dy))) * 0.25;
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.95, 0.98), wetLine);
+        }`,
+      )
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        '#include <common>\nuniform float uIceWaterY;',
+      )
+    }
+    m.customProgramCacheKey = () => 'iceberg-waterline-feather-v1'
     return { geo: merged, mat: m }
   }, [bergs, sunDir])
 
   return <mesh geometry={geo} material={mat} />
 }
+
+/**
+ * Brash ice: the small broken floes that crowd an arctic sea's foreground. Smooth, rounded, high-
+ * subdivision masses — half submerged, snow-lit on top, pale turquoise under the lip — scattered
+ * across the near and middle water in one instanced draw.
+ */
+export function BrashIce({ count = 80, sunDir = [0.45, 0.36, -0.82] }: { count?: number; sunDir?: [number, number, number] }) {
+  const ref = useRef<THREE.InstancedMesh>(null)
+
+  const { geo, mat, list } = useMemo(() => {
+    const g = new THREE.SphereGeometry(1, 14, 9)
+    const pos = g.attributes.position as THREE.BufferAttribute
+    const cols = new Float32Array(pos.count * 3)
+    const cSnow = new THREE.Color('#ffffff')
+    const cLit = new THREE.Color('#dcecf8')
+    const cSide = new THREE.Color('#a9cde4')
+    const cUnder = new THREE.Color('#3f9fc4')
+    const tmp = new THREE.Color()
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i)
+      const y = pos.getY(i)
+      const z = pos.getZ(i)
+      // a rounded, slightly lumpy cushion of ice, flattened under the waterline
+      const lump = 1 + 0.07 * Math.sin(x * 3.1 + seed3) + 0.05 * Math.cos(z * 2.7 - seed3)
+      pos.setXYZ(i, x * lump, (y > 0 ? y * 0.5 : y * 0.34), z * lump)
+      const up = THREE.MathUtils.clamp(y * 0.5 + 0.5, 0, 1)
+      tmp.copy(cUnder).lerp(cSide, up)
+      tmp.lerp(cLit, THREE.MathUtils.smoothstep(y, 0.1, 0.6))
+      tmp.lerp(cSnow, THREE.MathUtils.smoothstep(y, 0.5, 0.95) * 0.85)
+      cols[i * 3] = tmp.r
+      cols[i * 3 + 1] = tmp.g
+      cols[i * 3 + 2] = tmp.b
+    }
+    pos.needsUpdate = true
+    g.setAttribute('color', new THREE.BufferAttribute(cols, 3))
+    g.computeVertexNormals()
+
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0 })
+    applyPainterlySurface(m, { soft: 0.9, rimColor: '#ffffff', shadowTint: '#7aa2cc', sunDir, brush: 0.6, waterY: 0, wetBand: 0.3 })
+
+    const out: { x: number; y: number; z: number; s: number; sy: number; yaw: number }[] = []
+    for (let i = 0; i < count; i++) {
+      const v = Math.pow(hash2(i * 2.71, 8.83), 0.8)
+      const x = (hash2(i * 3.11, 1.73) * 2 - 1) * (3 + v * 17)
+      const z = -2.2 - v * 38
+      const s = (0.18 + 0.44 * hash2(i * 4.7, 2.3)) * (0.7 + v * 0.9)
+      out.push({ x, y: -0.02 * s, z, s, sy: 0.7 + 0.35 * hash2(i * 5.9, 3.7), yaw: hash2(i * 6.3, 4.1) * Math.PI * 2 })
+    }
+    return { geo: g, mat: m, list: out }
+  }, [count, sunDir])
+
+  useLayoutEffect(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    const dummy = new THREE.Object3D()
+    list.forEach((b, i) => {
+      dummy.position.set(b.x, b.y, b.z)
+      dummy.rotation.set(0, b.yaw, 0)
+      dummy.scale.set(b.s, b.s * b.sy, b.s * (0.8 + 0.4 * hash2(i, 2.1)))
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+    })
+    mesh.instanceMatrix.needsUpdate = true
+  }, [list])
+
+  return <instancedMesh ref={ref} args={[geo, mat, list.length]} />
+}
+
+const seed3 = 1.7

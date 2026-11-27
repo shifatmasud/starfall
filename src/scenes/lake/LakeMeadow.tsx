@@ -11,14 +11,13 @@ function hash(x: number, y: number): number {
 
 /**
  * Fine meadow grass tuft (6 slender tapering blades, 0.10-0.15 m tall, 0.0075 m base width):
- * Upward-biased normals + warm chartreuse-yellow tip gradient prevent dark edge needles.
+ * one bent tapered quad per blade (2 tris), upward-biased normals + warm chartreuse tip gradient.
  */
 function buildGrassTuftGeometry(): THREE.BufferGeometry {
   const blades: THREE.BufferGeometry[] = []
   const bladeCount = 6
 
   const cBase = new THREE.Color('#93b158')
-  const cMid = new THREE.Color('#c3d97e')
   const cTip = new THREE.Color('#eef0ac')
   const tmp = new THREE.Color()
 
@@ -27,47 +26,30 @@ function buildGrassTuftGeometry(): THREE.BufferGeometry {
     const h = 0.105 + (b % 4) * 0.014
     const lean = 0.045 + (b % 3) * 0.022
     const wBase = 0.0075
-
-    const segs = 3
-    const positions: number[] = []
-    const normals: number[] = []
-    const colors: number[] = []
-    const indices: number[] = []
+    const wTip = wBase * 0.05
 
     const dx = Math.cos(az)
     const dz = Math.sin(az)
     const px = -dz
     const pz = dx
 
-    for (let s = 0; s <= segs; s++) {
-      const t = s / segs
-      const w = wBase * (1 - t * 0.96)
-      const bend = Math.pow(t, 1.7) * lean
-      const cx = dx * bend
-      const cy = h * t * (1 - 0.12 * t)
-      const cz = dz * bend
+    const tx = dx * lean
+    const ty = h * 0.97
+    const tz = dz * lean
 
-      positions.push(cx - px * w, cy, cz - pz * w, cx + px * w, cy, cz + pz * w)
-      normals.push(dx * 0.2, 0.96, dz * 0.2, dx * 0.2, 0.96, dz * 0.2)
-
-      tmp
-        .copy(cBase)
-        .lerp(cMid, THREE.MathUtils.smoothstep(t, 0.0, 0.55))
-        .lerp(cTip, THREE.MathUtils.smoothstep(t, 0.45, 1.0))
-      colors.push(tmp.r, tmp.g, tmp.b, tmp.r, tmp.g, tmp.b)
-
-      if (s < segs) {
-        const r0 = s * 2
-        const r1 = (s + 1) * 2
-        indices.push(r0, r1, r0 + 1, r0 + 1, r1, r1 + 1)
-      }
-    }
+    const positions = [px * wBase, 0, pz * wBase, -px * wBase, 0, -pz * wBase, tx + px * wTip, ty, tz + pz * wTip, tx - px * wTip, ty, tz - pz * wTip]
+    const normals = [dx * 0.2, 0.96, dz * 0.2, dx * 0.2, 0.96, dz * 0.2, dx * 0.2, 0.96, dz * 0.2, dx * 0.2, 0.96, dz * 0.2]
+    const colors: number[] = []
+    tmp.copy(cBase)
+    colors.push(tmp.r, tmp.g, tmp.b, tmp.r, tmp.g, tmp.b)
+    tmp.copy(cBase).lerp(cTip, 0.94)
+    colors.push(tmp.r, tmp.g, tmp.b, tmp.r, tmp.g, tmp.b)
 
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
     g.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
     g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-    g.setIndex(indices)
+    g.setIndex([0, 1, 2, 1, 3, 2])
     blades.push(g)
   }
 
@@ -85,7 +67,7 @@ function buildDaisyGeometry(): THREE.BufferGeometry {
   const headY = 0.105
 
   // Slender green stem
-  const stem = new THREE.CylinderGeometry(0.0022, 0.0032, headY, 5)
+  const stem = new THREE.CylinderGeometry(0.0022, 0.0032, headY, 5, 1, true)
   stem.translate(0, headY * 0.5, 0)
   const sPos = stem.attributes.position as THREE.BufferAttribute
   const sCols = new Float32Array(sPos.count * 3)
@@ -99,7 +81,7 @@ function buildDaisyGeometry(): THREE.BufferGeometry {
   parts.push(stem)
 
   // Buttery golden center button
-  const center = new THREE.SphereGeometry(0.011, 10, 6)
+  const center = new THREE.SphereGeometry(0.011, 8, 4)
   center.scale(1.0, 0.55, 1.0)
   center.translate(0, headY + 0.002, 0)
   const cPos = center.attributes.position as THREE.BufferAttribute
@@ -119,7 +101,7 @@ function buildDaisyGeometry(): THREE.BufferGeometry {
   const cPetalTip = new THREE.Color('#ffffff')
   for (let p = 0; p < petals; p++) {
     const ang = (p / petals) * Math.PI * 2
-    const petal = new THREE.CircleGeometry(0.014, 8)
+    const petal = new THREE.CircleGeometry(0.014, 6)
     petal.scale(0.46, 1.35, 1.0) // slim rounded ellipse
     petal.rotateX(-Math.PI * 0.45)
     petal.translate(0, headY + 0.001, 0.021)

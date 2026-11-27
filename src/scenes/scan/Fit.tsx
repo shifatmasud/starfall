@@ -27,6 +27,8 @@ export function applyPainterlySurface(
     ripple?: number
     /** brushwork strength, world-space stroke + macro value noise in albedo and normal */
     brush?: number
+    /** brush frequency multiplier (a pine crown wants a finer stroke than a dune) */
+    brushScale?: number
     /** scrolling Voronoi caustics (underwater surfaces) */
     caustics?: number
     /** caustic tiling, world units */

@@ -1,7 +1,9 @@
-import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { Terrain } from '../scan/Terrain'
+import { Terrain, makeTerrainSampler } from '../scan/Terrain'
 import { applyPainterlySurface } from '../scan/Fit'
+import { buildSoftConifer } from './SoftConifer'
+import { lakeHeight } from './LakeGround'
 
 const SUN4: [number, number, number] = [0.64, 0.52, -0.56]
 
@@ -32,6 +34,24 @@ const RIGHT_PASTURE_SLOPE = {
   air: '#c6dcf4',
 }
 
+
+/** the hero alpine peak's own height field, shared by the mesh and by everything placed on it */
+export function heroHeight(x: number, z: number): number {
+  const dx1 = (x - 26) / 34
+  const dz1 = (z + 84) / 22
+  const mainCone = Math.max(0, 1 - Math.pow(Math.hypot(dx1, dz1), 0.88)) * 24.5
+  const dx2 = (x - 2) / 28
+  const dz2 = (z + 88) / 20
+  const westShoulder = Math.max(0, 1 - Math.pow(Math.hypot(dx2, dz2), 0.92)) * 13.5
+  const baseMass = Math.max(mainCone, westShoulder)
+  const ang = Math.atan2(z + 84, x - 26)
+  const spur1 = Math.abs(Math.sin(ang * 5.0 + x * 0.08)) * 0.34
+  const spur2 = Math.abs(Math.cos(ang * 9.0 - z * 0.11)) * 0.18
+  const ridgeFactor = 1.0 - (spur1 + spur2) * THREE.MathUtils.smoothstep(baseMass, 2.0, 18.0)
+  const zSkirt = THREE.MathUtils.smoothstep(z, -54, -66) * (1 - THREE.MathUtils.smoothstep(z, -102, -110))
+  return -0.8 + baseMass * ridgeFactor * zSkirt
+}
+
 function hash(x: number, y: number): number {
   const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123
   return s - Math.floor(s)
@@ -59,29 +79,7 @@ function HeroAlpinePeak({ sunDir = SUN4 }: { sunDir?: [number, number, number] }
       const x = pos.getX(i)
       const z = pos.getZ(i)
 
-      // Main summit centered around x = 26, z = -84, plus secondary western shoulder at x = 4, z = -88
-      const dx1 = (x - 26) / 34
-      const dz1 = (z + 84) / 22
-      const r1 = Math.hypot(dx1, dz1)
-      const mainCone = Math.max(0, 1 - Math.pow(r1, 0.88)) * 24.5
-
-      const dx2 = (x - 2) / 28
-      const dz2 = (z + 88) / 20
-      const r2 = Math.hypot(dx2, dz2)
-      const westShoulder = Math.max(0, 1 - Math.pow(r2, 0.92)) * 13.5
-
-      const baseMass = Math.max(mainCone, westShoulder)
-
-      // Sharp radiating ridge spurs and eroded couloir gullies
-      const ang = Math.atan2(z + 84, x - 26)
-      const spur1 = Math.abs(Math.sin(ang * 5.0 + x * 0.08)) * 0.34
-      const spur2 = Math.abs(Math.cos(ang * 9.0 - z * 0.11)) * 0.18
-      const ridgeFactor = 1.0 - (spur1 + spur2) * THREE.MathUtils.smoothstep(baseMass, 2.0, 18.0)
-
-      // Soften front/back skirt so it blends smoothly into the lake shore & pasture shelf
-      const zSkirt = THREE.MathUtils.smoothstep(z, -54, -66) * (1 - THREE.MathUtils.smoothstep(z, -102, -110))
-      const y = -0.8 + baseMass * ridgeFactor * zSkirt
-      pos.setY(i, y)
+      pos.setY(i, heroHeight(x, z))
     }
     pos.needsUpdate = true
     g.computeVertexNormals()
@@ -139,6 +137,75 @@ function HeroAlpinePeak({ sunDir = SUN4 }: { sunDir?: [number, number, number] }
     // lambert pass can turn the mountain into a dark navy cut-out
     const m = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false })
 
+    /**
+     * The hillside is painted per fragment, not per vertex: at 1 m between vertices the vertex
+     * colours could only ever be a green blob. Slope (from screen-space derivatives of the world
+     * position, so no normal attribute is needed), height and two rotated octaves of brushwork mix
+     * the meadow olive, dry ochre and alpine slate into pasture, dry grass and rock, and the baked
+     * sun/shade is carried through as a ratio, so the slope still catches the light.
+     */
+    const PAINT = /* glsl */ `
+      varying vec3 vHillPos;
+      uniform vec3 uMeadow;
+      uniform vec3 uOlive;
+      uniform vec3 uOchre;
+      uniform vec3 uSlate;
+      uniform vec3 uBase;
+      float hg(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+      vec2 hg2(vec2 p){ return vec2(hg(p), hg(p + 19.19)); }
+      float gn(vec2 p){
+        vec2 i = floor(p), f = fract(p);
+        vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+        vec2 g00 = normalize(hg2(i) - 0.5), g10 = normalize(hg2(i + vec2(1.0, 0.0)) - 0.5);
+        vec2 g01 = normalize(hg2(i + vec2(0.0, 1.0)) - 0.5), g11 = normalize(hg2(i + vec2(1.0, 1.0)) - 0.5);
+        float n00 = dot(g00, f), n10 = dot(g10, f - vec2(1.0, 0.0));
+        float n01 = dot(g01, f - vec2(0.0, 1.0)), n11 = dot(g11, f - vec2(1.0, 1.0));
+        return mix(mix(n00, n10, u.x), mix(n01, n11, u.x), u.y) * 2.0;
+      }
+      float fbm2(vec2 p){
+        mat2 r = mat2(0.8, -0.6, 0.6, 0.8);
+        return gn(p) * 0.72 + gn(r * (p * 1.7) + 9.1) * 0.38;
+      }
+    `
+    m.onBeforeCompile = (shader) => {
+      shader.uniforms.uMeadow = { value: new THREE.Color('#a6c06a') }
+      shader.uniforms.uOlive = { value: new THREE.Color('#55663a') }
+      shader.uniforms.uOchre = { value: new THREE.Color('#a89a62') }
+      shader.uniforms.uSlate = { value: new THREE.Color('#6c7a82') }
+      shader.uniforms.uBase = { value: new THREE.Color('#8ba468') }
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vHillPos;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHillPos = (modelMatrix * vec4(transformed, 1.0)).xyz;')
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>\n${PAINT}`)
+        .replace(
+          '#include <color_fragment>',
+          `#include <color_fragment>
+          {
+            vec3 hN = normalize(cross(dFdx(vHillPos), dFdy(vHillPos)));
+            if (hN.y < 0.0) hN = -hN;
+            float slope = 1.0 - clamp(hN.y, 0.0, 1.0);
+            vec2 wp = vHillPos.xz;
+            float m1 = fbm2(wp * 0.075);
+            float m2 = fbm2(wp * 0.19 + 4.3);
+            float h = vHillPos.y;
+            float m3 = fbm2(wp * 0.55 + 11.7);
+            vec3 c = mix(uMeadow, uOlive, smoothstep(-0.2, 0.6, m1) * 0.72 + 0.1);
+            c = mix(c, uOchre, smoothstep(0.15, 0.8, m2) * 0.5);
+            c = mix(c, uOlive, smoothstep(0.3, 0.85, m3) * 0.3);
+            // steep ground dries to ochre gravel, high ground to slate rock
+            c = mix(c, uOchre, smoothstep(0.22, 0.55, slope) * 0.62);
+            c = mix(c, uSlate, smoothstep(0.42, 0.85, slope) * 0.85 + smoothstep(7.0, 15.0, h) * 0.6);
+            // clumps of pasture woodland, painted in: a soft dark mottle where trees would stand
+            float clump = smoothstep(0.35, 0.9, fbm2(wp * 0.34 - 6.1));
+            c = mix(c, c * vec3(0.62, 0.72, 0.68), clump * 0.55 * (1.0 - smoothstep(0.3, 0.55, slope)));
+            // carry the baked sun/shade through as a ratio to the palette's base
+            diffuseColor.rgb *= c / uBase;
+          }`,
+        )
+    }
+    m.customProgramCacheKey = () => 'hero-alpine-painted-v2'
+
     return { geo: g, mat: m }
   }, [sunDir])
 
@@ -146,53 +213,16 @@ function HeroAlpinePeak({ sunDir = SUN4 }: { sunDir?: [number, number, number] }
 }
 
 /**
- * Soft layered conifer spire (~230 tris): one smooth lathe with gentle whorl swells and a noise
- * warp, so the silhouette feathers rather than breaking into stacked cones.
+ * The hillside forest: real conifers in overlapping clusters down the hero peak's right flank and
+ * along its foot at the water, the way the reference panel's belt sits — dense, varied in height,
+ * grouped rather than spaced out in a row.
  */
-function buildSlopeConiferPrototype(): THREE.BufferGeometry {
-  const rings = 14
-  const radial = 9
-  const profile: THREE.Vector2[] = []
-  for (let r = 0; r <= rings; r++) {
-    const t = r / rings
-    // tier swells: the bough layers read as soft skirts, not steps
-    const swell = 1 + 0.16 * Math.sin(t * Math.PI * 3.2 + 0.4)
-    const rad = (0.34 * Math.pow(1 - t, 0.95) + 0.02) * swell
-    profile.push(new THREE.Vector2(rad, 0.04 + t * 0.94))
-  }
-  const g = new THREE.LatheGeometry(profile, radial)
-  const pos = g.attributes.position as THREE.BufferAttribute
-  const cols = new Float32Array(pos.count * 3)
-  const cShadow = new THREE.Color('#35523f')
-  const cMid = new THREE.Color('#4e7052')
-  const cSun = new THREE.Color('#7f9c62')
-  const tmp = new THREE.Color()
-  for (let i = 0; i < pos.count; i++) {
-    const vx = pos.getX(i)
-    const vy = pos.getY(i)
-    const vz = pos.getZ(i)
-    const ang = Math.atan2(vz, vx)
-    const t = THREE.MathUtils.clamp((vy - 0.04) / 0.94, 0, 1)
-    const ragged = 1 + 0.10 * Math.sin(ang * 5 + vy * 16) + 0.06 * Math.cos(ang * 8 - vy * 22)
-    pos.setXYZ(i, vx * ragged, vy, vz * ragged)
-    tmp.copy(cShadow).lerp(cMid, t * 0.7)
-    tmp.lerp(cSun, THREE.MathUtils.smoothstep(t, 0.45, 1.0) * 0.55)
-    cols[i * 3] = tmp.r
-    cols[i * 3 + 1] = tmp.g
-    cols[i * 3 + 2] = tmp.b
-  }
-  pos.needsUpdate = true
-  g.computeVertexNormals()
-  g.setAttribute('color', new THREE.BufferAttribute(cols, 3))
-  return g.toNonIndexed()
-}
-
-/** 280 fine conifer spires forming the dark-green forest belt along the right mountain base */
-function DistantTreelineBand({ sunDir = SUN4 }: { sunDir?: [number, number, number] }) {
+function ForestBelt({ sunDir = SUN4 }: { sunDir?: [number, number, number] }) {
   const ref = useRef<THREE.InstancedMesh>(null)
+  const [instances, setInstances] = useState<TreeInstance[]>([])
 
-  const { geo, mat, instances } = useMemo(() => {
-    const g = buildSlopeConiferPrototype()
+  const { geo, mat } = useMemo(() => {
+    const g = buildSoftConifer({ seed: 21, tiers: 7, perTier: 4, seg: [5, 3], lift: 0.02, width: 0.4 })
     const m = new THREE.MeshStandardMaterial({
       vertexColors: true,
       roughness: 0.88,
@@ -200,38 +230,82 @@ function DistantTreelineBand({ sunDir = SUN4 }: { sunDir?: [number, number, numb
     })
     applyPainterlySurface(m, {
       soft: 0.85,
-      rimColor: '#e4f0ff',
-      shadowTint: '#3e5c70',
+      rimColor: '#e8f2ff',
+      shadowTint: '#40586a',
       sunDir,
+      brush: 1,
+      brushScale: 16,
     })
-
-    const list: { x: number; y: number; z: number; sx: number; sy: number; yaw: number; tint: THREE.Color }[] = []
-    const count = 100
-    const cNearTint = new THREE.Color('#c8dcc8')
-    const cFarTint = new THREE.Color('#84a8d2')
-
-    for (let i = 0; i < count; i++) {
-      const u = hash(i * 1.37, 4.19)
-      const v = hash(i * 2.71, 7.83)
-      const x = 3.5 + v * 40.0 + (u - 0.5) * 7.0
-      const z = -15.0 - v * 58.0 - u * 7.0
-      const baseY = Math.max(0.04, (x - 8.5) * 0.14 + (-z - 15.0) * 0.075 + u * 2.6 - 0.6)
-      const h = (1.15 + hash(i * 5.13, 2.91) * 0.95) * (1 - v * 0.2)
-      const hazeT = THREE.MathUtils.smoothstep(-z, 16.0, 66.0)
-
-      list.push({
-        x,
-        y: baseY,
-        z,
-        sx: h * (0.64 + hash(i, 3.1) * 0.2),
-        sy: h,
-        yaw: hash(i * 3.91, 6.47) * Math.PI * 2,
-        tint: cNearTint.clone().lerp(cFarTint, hazeT * 0.82),
-      })
-    }
-
-    return { geo: g, mat: m, instances: list }
+    return { geo: g, mat: m }
   }, [sunDir])
+
+  // The forest stands on ground that is already drawn: the right pasture terrain (sampled from its
+  // own DEM) up the hillside, and the lake's far bank (sampled from the meadow field) at the water.
+  useEffect(() => {
+    let live = true
+    const pasture = makeTerrainSampler({
+      dem: '/tex/dem/ridge-h.webp',
+      size: [68, 48],
+      relief: 13,
+      position: [30, -0.8, -46],
+      yaw: 0.78,
+    })
+    const slope = makeTerrainSampler({
+      dem: '/tex/dem/ridge-h.webp',
+      size: [64, 42],
+      relief: 7.5,
+      position: [32, -0.7, -38],
+      yaw: 0.75,
+    })
+    Promise.all([pasture, slope]).then(([hill, terrace]) => {
+      if (!live) return
+      const ground = (x: number, z: number) => {
+        const h = hill(x, z)
+        const t = terrace(x, z)
+        const bank = lakeHeight(x, z)
+        return h > 0.35 ? h : t > 0.35 ? t : bank
+      }
+      const list: TreeInstance[] = []
+      const cNearTint = new THREE.Color('#cfe0c4')
+      const cFarTint = new THREE.Color('#9fbcd8')
+      let i = 0
+      const pushTree = (x: number, z: number, hMin: number, hMax: number, haze: number, maxY = 3.2) => {
+        i++
+        const y = ground(x, z)
+        if (y < 0.1 || y > maxY) return
+        const h = hMin + (hMax - hMin) * hash(i * 5.13, 2.91)
+        list.push({
+          x,
+          y: y - 0.12,
+          z,
+          sx: h * (0.6 + 0.28 * hash(i * 3.1, 1.7)),
+          sy: h,
+          yaw: hash(i * 3.91, 6.47) * Math.PI * 2,
+          tilt: (hash(i * 7.7, 2.3) - 0.5) * 0.05,
+          tint: cNearTint.clone().lerp(cFarTint, haze * 0.55),
+        })
+      }
+
+      // 1. the treeline at the water: it follows the far shore's own curve, two or three trees deep,
+      //    so the lake's edge is a dark band of firs instead of a bare grass line
+      for (let k = 0; k <= 44; k++) {
+        const x = -26 + k * 1.55
+        const shoreZ = -42.2 + Math.sin(x * 0.09) * 3.5 + Math.cos(x * 0.19) * 1.8
+        const depth = 2 + 6 * hash(k * 2.3, 5.7)
+        const z = shoreZ - depth
+        pushTree(x + (hash(k * 1.7, 3.1) - 0.5) * 1.1, z, 2.4, 5.2, 0.35)
+        if (hash(k * 4.1, 8.3) > 0.35) pushTree(x + (hash(k * 5.3, 1.9) - 0.5) * 1.4, z - 1.6, 1.9, 4.4, 0.4)
+        if (hash(k * 6.7, 2.9) > 0.6) pushTree(x + (hash(k * 8.1, 4.7) - 0.5) * 1.6, z + 1.2, 1.6, 3.6, 0.3)
+        if (hash(k * 9.3, 3.7) > 0.25) pushTree(x + (hash(k * 2.9, 6.1) - 0.5) * 1.8, z - 3.4, 2.2, 4.8, 0.48)
+        if (hash(k * 11.1, 7.3) > 0.55) pushTree(x + (hash(k * 4.3, 2.1) - 0.5) * 2.0, z - 5.2, 2.0, 4.2, 0.52)
+      }
+
+      setInstances(list)
+    })
+    return () => {
+      live = false
+    }
+  }, [])
 
   useLayoutEffect(() => {
     const mesh = ref.current
@@ -239,7 +313,7 @@ function DistantTreelineBand({ sunDir = SUN4 }: { sunDir?: [number, number, numb
     const dummy = new THREE.Object3D()
     instances.forEach((item, idx) => {
       dummy.position.set(item.x, item.y, item.z)
-      dummy.rotation.set(0, item.yaw, 0)
+      dummy.rotation.set(item.tilt, item.yaw, item.tilt * 0.6)
       dummy.scale.set(item.sx, item.sy, item.sx)
       dummy.updateMatrix()
       mesh.setMatrixAt(idx, dummy.matrix)
@@ -249,7 +323,19 @@ function DistantTreelineBand({ sunDir = SUN4 }: { sunDir?: [number, number, numb
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
   }, [instances])
 
+  if (!instances.length) return null
   return <instancedMesh ref={ref} args={[geo, mat, instances.length]} />
+}
+
+type TreeInstance = {
+  x: number
+  y: number
+  z: number
+  sx: number
+  sy: number
+  yaw: number
+  tilt: number
+  tint: THREE.Color
 }
 
 export function LakeRange() {
@@ -298,10 +384,11 @@ export function LakeRange() {
         sun={SUN4}
         haze={0.22}
         palette={RIGHT_PASTURE_SLOPE}
+        forest={0.95}
       />
 
-      {/* 280 fine conifer spires forming the dark-green forest belt along the mountain base */}
-      <DistantTreelineBand sunDir={SUN4} />
+      {/* clustered conifer forest down the peak's right flank and along its foot */}
+      <ForestBelt sunDir={SUN4} />
     </group>
   )
 }

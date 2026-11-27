@@ -2,7 +2,7 @@ import { ScanScene } from './scan/ScanScene'
 import { WaterPlane } from './scan/WaterPlane'
 import { Terrain } from './scan/Terrain'
 import { SHARED_SKY } from './scan/sky'
-import { IceBergs } from './ice/IceBergs'
+import { BrashIce, IceBergs } from './ice/IceBergs'
 
 /**
  * Scene 6 — Ocean (Ice). The orb glides with a cold streak low over turquoise water past ice.
@@ -44,9 +44,10 @@ export function Scene6Ice() {
       splitTone={{ shadow: '#7fa0cf', highlight: '#fff0d8', strength: 0.2 }}
       soften={{ amount: 0.22, radius: 2.5, mist: 0.005, mistColor: '#dcecf8' }}
     >
-      <WaterPlane near={0} y={0.0} spectrum="sea" peakWave={2.9} hs={0.14} bearing={242} detail={0.06} steep={0.42} flat={0.02} spread={1.9} bands={16} wind={3.2} fetch={30000} chl={0.45} metersPerUnit={2.5} sunFrom={[6, 2.8, -14]} sunColor="#fff6e6" lift={3.4} tint={[0.6, 0.88, 1.05]} sparkle={1.6} skyBright={0.55} reflGain={1.15} />
+      <WaterPlane near={0} y={0.0} spectrum="sea" peakWave={2.9} hs={0.14} bearing={242} detail={0.03} steep={0.42} flat={0.02} spread={1.9} bands={16} wind={3.2} fetch={30000} chl={0.45} metersPerUnit={2.5} sunFrom={[6, 2.8, -14]} sunColor="#fff6e6" lift={3.4} tint={[0.6, 0.88, 1.05]} sparkle={1.6} skyBright={0.55} reflGain={1.15} rippleScale={0.42} rippleStrength={0.28} capillary={0.5} glintSoft={0.18} glintBoost={1.35} />
       <Terrain dem="/tex/dem/icefront-h.webp" size={[230, 70]} relief={15} floor={0.04} position={[0, 0.2, -128]} sun={[0.45, 0.32, -0.82]} haze={0.42} palette={ICEFRONT} />
       <IceBergs sunDir={[0.45, 0.32, -0.82]} />
+      <BrashIce count={90} sunDir={[0.45, 0.32, -0.82]} />
     </ScanScene>
   )
 }

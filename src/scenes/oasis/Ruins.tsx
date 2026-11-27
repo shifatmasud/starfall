@@ -96,11 +96,14 @@ export function Ruins({
   yaw = 0.22,
   scale = 1.0,
   sunDir = [-5, 6.5, -3],
+  sandColor = '#c8a276',
 }: {
   position?: [number, number, number]
   yaw?: number
   scale?: number
   sunDir?: [number, number, number]
+  /** the dune the ruin stands in: its lower courses are buried, not cut off */
+  sandColor?: string
 }) {
   const { geo, mat } = useMemo(() => {
     const parts: THREE.BufferGeometry[] = []
@@ -180,7 +183,7 @@ export function Ruins({
 
     const m = new THREE.MeshStandardMaterial({
       vertexColors: true,
-      roughness: 0.86,
+      roughness: 0.88,
       metalness: 0,
     })
     applyPainterlySurface(m, {
@@ -188,8 +191,33 @@ export function Ruins({
       rimColor: '#fff2d8',
       shadowTint: '#8d6c5e',
       sunDir,
-      brush: 0.75,
+      brush: 0.8,
     })
+
+    // the ruin is warm sandstone, and its foot is buried: below the drift line the stone takes the
+    // dune's own colour, so the colonnade rises out of the sand instead of being planted in it
+    const prevCompile = m.onBeforeCompile
+    m.onBeforeCompile = (shader, renderer) => {
+      prevCompile(shader, renderer)
+      shader.uniforms.uSand = { value: new THREE.Color(sandColor) }
+      shader.uniforms.uBaseY = { value: position[1] }
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          float above = vPaintWorldPos.y - uBaseY;
+          float drift = smoothstep(0.0, 1.35, above);
+          diffuseColor.rgb = mix(uSand * (0.92 + 0.08 * drift), diffuseColor.rgb, drift);
+          // keep the fluted stone in the dune's own warm family instead of drifting to grey
+          diffuseColor.rgb *= vec3(1.1, 0.97, 0.82);
+        }`,
+      )
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        '#include <common>\nuniform vec3 uSand;\nuniform float uBaseY;',
+      )
+    }
+    m.customProgramCacheKey = () => 'oasis-ruins-sandstone-v1'
 
     return { geo: merged, mat: m }
   }, [sunDir])

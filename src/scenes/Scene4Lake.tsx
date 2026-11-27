@@ -8,7 +8,7 @@ import { Terrain } from './scan/Terrain'
 import { SHARED_SKY } from './scan/sky'
 import { caps } from '../gl/capabilities'
 import { LakeGround, lakeHeight, type PineShadowCaster } from './lake/LakeGround'
-import { LAKE_PINES, LakePines, type PinePlacement } from './lake/LakePines'
+import { LAKE_PINES, LakePines } from './lake/LakePines'
 import { LakeShore } from './lake/LakeShore'
 import { LakeRange } from './lake/LakeRange'
 import { LakeMeadow, LakesideBoulder } from './lake/LakeMeadow'
@@ -20,19 +20,6 @@ const BOULDERS: { x: number; z: number; scale: [number, number, number]; yaw: nu
   { x: 3.15, z: -4.65, scale: [0.44, 0.24, 0.36], yaw: 0.7, seed: 3 },
   { x: 3.65, z: -4.95, scale: [0.32, 0.18, 0.28], yaw: 2.1, seed: 4 },
   { x: -3.25, z: -4.85, scale: [0.42, 0.22, 0.34], yaw: 1.3, seed: 5 },
-]
-
-const SLOPE_TREELINE: PinePlacement[] = [
-  { x: 11.2, z: -15.2, height: 3.1, yaw: 0.5, lean: 0.02, tint: '#cde0de' },
-  { x: 12.8, z: -16.8, height: 3.5, yaw: 1.7, lean: -0.02, tint: '#c6dce2' },
-  { x: 14.6, z: -18.5, height: 3.9, yaw: 2.4, lean: 0.01, tint: '#bfd6e6' },
-  { x: 16.5, z: -20.4, height: 4.2, yaw: 0.9, lean: -0.02, tint: '#b8d2ea' },
-  { x: 18.4, z: -22.6, height: 4.5, yaw: 2.1, lean: 0.02, tint: '#b2ceee' },
-  { x: 20.5, z: -25.0, height: 4.8, yaw: 1.3, lean: -0.01, tint: '#accaf0' },
-  { x: 8.6, z: -17.5, height: 2.5, yaw: 2.8, lean: 0.02, tint: '#c4dae4' },
-  { x: 10.4, z: -20.2, height: 2.9, yaw: 0.4, lean: -0.02, tint: '#bdd6e8' },
-  { x: 12.6, z: -23.0, height: 3.3, yaw: 1.9, lean: 0.01, tint: '#b6d2ec' },
-  { x: 15.0, z: -26.2, height: 3.7, yaw: 2.6, lean: -0.01, tint: '#b0ceee' },
 ]
 
 const RECEDING_SLOPE_NEAR = {
@@ -74,7 +61,7 @@ function HorizonClouds() {
 }
 
 export function Scene4Lake() {
-  const allPines = useMemo(() => [...LAKE_PINES, ...SLOPE_TREELINE], [])
+  const allPines = useMemo(() => [...LAKE_PINES], [])
 
   const casters = useMemo<PineShadowCaster[]>(() => {
     const list: PineShadowCaster[] = LAKE_PINES.map((p) => ({
@@ -185,9 +172,10 @@ export function Scene4Lake() {
         sun={SUN4_DIR}
         haze={0.26}
         palette={RECEDING_SLOPE_NEAR}
+        forest={0.7}
       />
 
-      {/* Airy layered pines + receding right-shoreline treeline */}
+      {/* Pines gathered on the right bank at the bay's edge */}
       <LakePines trees={allPines} sunDir={SUN4_DIR} />
       {LAKE_PINES.map((p, i) => (
         <SoftShadow

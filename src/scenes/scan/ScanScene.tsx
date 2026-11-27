@@ -281,6 +281,8 @@ export type ScanSceneProps = {
   shadowFloor?: string
   grade?: number
   saturation?: number
+  /** gain on the upper half of the grade curve (1 = untouched) */
+  highlightGain?: number
   splitTone?: { shadow?: string; highlight?: string; strength?: number }
   blackPoint?: number
   gamma?: number
@@ -554,6 +556,7 @@ function Inner(props: ScanSceneProps) {
           shadowFloor={props.shadowFloor}
           grade={props.grade}
           saturation={props.saturation}
+          highlightGain={props.highlightGain}
           splitTone={props.splitTone}
           blackPoint={props.blackPoint}
           gamma={props.gamma}

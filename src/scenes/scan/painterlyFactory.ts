@@ -29,6 +29,7 @@ const COMMON_GLSL = /* glsl */ `
   uniform vec3 uPainterlySun;
   uniform float uPainterlyRipple;
   uniform float uPaintBrush;
+  uniform float uPaintBrushScale;
   uniform float uPaintCaustics;
   uniform float uPaintCausticScale;
   uniform float uPaintTime;
@@ -66,6 +67,30 @@ const COMMON_GLSL = /* glsl */ `
     p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
     return fract(sin(p) * 43758.5453);
   }
+  // a 2-D gradient noise, quintic fade: smooth slopes all the way to the cell edge, so a flat ground
+  // plane can never resolve it into a lattice of squares the way a sliced 3-D value noise does
+  vec2 pGrad2(vec2 c){
+    float a = pHash(vec3(c, 1.7)) * 6.28318530718;
+    return vec2(cos(a), sin(a));
+  }
+  float pNoise2(vec2 p){
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    float n00 = dot(pGrad2(i), f);
+    float n10 = dot(pGrad2(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0));
+    float n01 = dot(pGrad2(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0));
+    float n11 = dot(pGrad2(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0));
+    return mix(mix(n00, n10, u.x), mix(n01, n11, u.x), u.y) * 2.0;
+  }
+  // the paint's value field: two octaves, 0.07 and 0.19 cycles per world unit, the second turned 37°
+  // against the first, so the two lattices cannot align into a checkerboard at any grazing angle
+  float pPaintFbm(vec2 p){
+    mat2 rot = mat2(0.8, -0.6, 0.6, 0.8);
+    float a = pNoise2(p * 0.07);
+    float b = pNoise2(rot * (p * 0.19) + 17.3);
+    return a * 0.72 + b * 0.38;
+  }
   // two scrolling Voronoi layers, domain-warped twice: the net bends and breathes instead of
   // drawing straight polygon edges across the sand
   float pCaustic(vec2 uv){
@@ -102,7 +127,11 @@ const COMMON_GLSL = /* glsl */ `
     }
     // patchy light: the whole net brightens and fades as one sheet of rippling light
     acc *= 0.18 + 1.15 * pFbm(vec3(wuv * 0.16, uPaintTime * 0.02));
-    return acc * 0.5;
+    // a painterly caustic: the net is a soft shoulder, never a drawn web, and a slow cloud mask
+    // lets whole patches of the seabed fall quiet between the pools of light
+    float c = pow(smoothstep(0.15, 0.85, acc * 0.5), 1.4);
+    float cloud = mix(0.25, 1.0, pFbm(vec3(wuv * 0.08, uPaintTime * 0.012)));
+    return c * cloud;
   }
 `
 
@@ -163,6 +192,7 @@ export function paintMaterial(mat: THREE.MeshStandardMaterial, opts: PaintOption
     shader.uniforms.uPainterlySun = { value: new THREE.Vector3(...sunDir).normalize() }
     shader.uniforms.uPainterlyRipple = { value: ripple }
     shader.uniforms.uPaintBrush = { value: brush }
+    shader.uniforms.uPaintBrushScale = { value: (opts as { brushScale?: number }).brushScale ?? 1 }
     shader.uniforms.uPaintCaustics = { value: caustics }
     shader.uniforms.uPaintCausticScale = { value: causticScale }
     shader.uniforms.uPaintTime = paintClock
@@ -211,15 +241,16 @@ export function paintMaterial(mat: THREE.MeshStandardMaterial, opts: PaintOption
           diffuseColor.rgb *= 1.0 + rp * uPainterlyRipple * 0.09;
         }
         if (uPaintBrush > 0.001) {
-          // the brush drags the shading normal: two extra taps, differenced in world XZ, which is
-          // where every painted surface here lives (a CPU rasterizer cannot afford three)
-          vec3 bwp = vPaintWorldPos * (1.15 / max(0.05, uPaintBrush * 3.2 + 0.35));
-          float be = 0.26;
-          float b0 = pNoise(bwp);
-          vec2 bg = vec2(pNoise(bwp + vec3(be, 0.0, 0.0)) - b0,
-                         pNoise(bwp + vec3(0.0, 0.0, be)) - b0) / be;
+          // the brush drags the shading normal: the gradient of the same rotated field, differenced
+          // in world XZ, which is where every painted surface here lives
+          vec2 bp = vPaintWorldPos.xz;
+          float be = 0.22;
+          float bs = 3.4 * uPaintBrushScale;
+          float b0 = pPaintFbm(bp * bs);
+          vec2 bg = vec2(pPaintFbm((bp + vec2(be, 0.0)) * bs) - b0,
+                         pPaintFbm((bp + vec2(0.0, be)) * bs) - b0) / be;
           vec3 bView = (viewMatrix * vec4(bg.x, 0.0, bg.y, 0.0)).xyz;
-          normal = normalize(normal + bView * uPaintBrush * 0.05);
+          normal = normalize(normal + bView * uPaintBrush * 0.012);
         }`,
       )
 
@@ -253,27 +284,17 @@ export function paintMaterial(mat: THREE.MeshStandardMaterial, opts: PaintOption
           }
         }
         if (uPaintBrush > 0.001) {
-          // the stroke is a 3D noise field in world space (no seams, no triplanar taps): one octave
-          // for the brush, one macro octave that groups the strokes the way paint is blocked in
-          // the lattice is turned about the vertical and read at two scales, so the stroke never
-          // shows its cell boundaries as a grid on a grazing surface (a checkerboard is the one
-          // artifact no amount of grading hides)
-          // two octaves on two different bases (37° and 53°): neither lattice can align with the
-          // other, so the stroke never resolves into a grid on a grazing surface
-          vec3 b1 = vPaintWorldPos * uPaintBrush * 2.2;
-          b1.xz = mat2(0.80, -0.60, 0.60, 0.80) * b1.xz;
-          vec3 b2 = vPaintWorldPos * uPaintBrush * 5.9;
-          b2.xz = mat2(0.60, -0.80, 0.80, 0.60) * b2.xz;
-          float tri = pNoise(b1 + 3.0) * 0.62 + pNoise(b2 + 11.0) * 0.38;
-          float macro = pNoise(vPaintWorldPos * uPaintBrush * 0.5 + 5.0);
-          float v = (tri - 0.5) * 0.58 + (macro - 0.5) * 0.52;
-          float vv = clamp(v * uPaintBrush, -0.16, 0.16);
-          diffuseColor.rgb *= 1.0 + vv;
+          // the stroke is a 2-D field in the ground plane (no seams, no triplanar taps): gradient
+          // noise, not a sliced value lattice, which is what put a checkerboard on the meadow
+          // one rotated two-octave field at 0.07 / 0.19 cycles per world unit, ±0.09 on luma: a
+          // value field a brush could have laid down, with no cell edges to catch the eye
+          float v = pPaintFbm(vPaintWorldPos.xz * uPaintBrushScale) * 0.09 * uPaintBrush;
+          diffuseColor.rgb *= 1.0 + v;
           // the stroke carries a hue — warm ochre where the paint is lit, cool olive in the trough —
           // which is what makes low-contrast brushwork read as paint instead of blur
           vec3 warm = vec3(1.05, 1.01, 0.92);
           vec3 cool = vec3(0.93, 0.99, 1.02);
-          diffuseColor.rgb *= mix(vec3(1.0), vv > 0.0 ? warm : cool, min(abs(vv) * 5.0, 0.9));
+          diffuseColor.rgb *= mix(vec3(1.0), v > 0.0 ? warm : cool, min(abs(v) * 6.0, 0.75));
         }`,
       )
 
