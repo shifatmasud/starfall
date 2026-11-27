@@ -54,6 +54,8 @@ export type ScanSceneProps = {
   bubbles?: { dir: [number, number]; len: number; spread: number; size: number; count?: number }
   /** the orb's glow on the scans around it */
   glow?: { color: string; intensity: number; distance: number }
+  /** atmospheric perspective: colour and the near/far range over which it thickens */
+  fog?: { color: string; near: number; far: number }
   clear: string
   poster: { portrait: string; landscape: string }
   bloom?: number
@@ -263,6 +265,7 @@ function Inner(props: ScanSceneProps) {
           <World hdri={hdri} ground={ground} envIntensity={envIntensity} bgIntensity={bgIntensity} yaw={skyYaw} pitch={skyPitch} />
         </Suspense>
       ) : null}
+      {props.fog ? <fog attach="fog" args={[props.fog.color, props.fog.near, props.fog.far]} /> : null}
       {water ? <Sea {...water} /> : null}
       {sun ? <directionalLight position={sun.from} color={sun.color ?? '#fff4e0'} intensity={sun.intensity} /> : null}
       {props.rays ? <Rays {...props.rays} /> : null}

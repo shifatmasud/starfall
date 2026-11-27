@@ -111,3 +111,19 @@ the pass returns the frame untouched, to the pixel. A stroke begins where the ha
 contact snaps the brush instead of dragging it from the last position, and release clears the stroke.
 `node scripts/trail-origin-qa.mjs` captures a touch scrub from the centre-right and diffs the frame
 to prove nothing is painted at the origin.
+
+## Credits
+
+The scanned and modelled assets shipped in `public/` are third-party work:
+
+- Poly Haven (CC0) — HDRI skies, scanned rocks, grass, ferns, palm trunk and palm leaf crowns, tree stump.
+- Smithsonian Open Access (CC0) — the coral specimens (Acropora, Pocillopora, Porites, Favia) and the conch shell.
+- ambientCG (CC0) — the moss carpet scan.
+- **vinish.dev, "Date Palm", "Royal Palm", "Coconut Palm" (CC BY 4.0)** — the oasis palms, via
+  https://vinish.dev/free-3d-models/palms, downloaded as glTF, optimised with gltf-transform (meshopt
+  geometry, WebP textures), converted with gltfjsx. Attribution: models by vinish.dev, licensed under
+  CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+- NOAA NDBC (public domain) — the measured wave spectra that drive the water (`src/physics/waveSpectra.ts`).
+
+Binary assets that had to travel through a text-only contents API are committed base64-encoded
+(`*.b64`) and decoded to their real form by `vite.config.ts` at build time.

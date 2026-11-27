@@ -43,15 +43,16 @@ export function Scene6Ice() {
       orb={{ position: [0.55, 1.35, -4.2], radius: 0.18 }}
       look={{ light: [0.5, 0.75], tint: '#eef8ff', rim: '#eaf6ff', haloColor: '#cfe9ff', halo: 0.45, bend: 2.0, gain: 1.45 }}
       streak={{ dir: [-1, -0.25], len: 0.9, width: 0.016, color: '#bfe2ff', strength: 0.9 }}
+      fog={{ color: '#dcf0f8', near: 30, far: 300 }}
       clear="#7fa8c8"
       poster={{ portrait: '/poster/scene6-portrait.webp', landscape: '/poster/scene6-landscape.webp' }}
       bloom={0.55}
       exposure={1.02}
-      haze={0.12}
-      soften={{ amount: 0.16, radius: 3, mist: 0.03 }}
+      haze={0.24}
+      soften={{ amount: 0.26, radius: 3.4, mist: 0.02 }}
     >
       <WaterPlane near={0} y={0.0} spectrum="sea" peakWave={2.9} hs={0.16} bearing={250} detail={0.06} steep={0.75} flat={0.01} spread={1.7} bands={14} wind={3.0} fetch={30000} chl={0.9} metersPerUnit={2.5} sunFrom={[9, 2.4, -8]} sunColor="#fff6e6" lift={2.7} tint={[0.62, 1.06, 1.12]} sparkle={1.7} skyBright={1.15} reflGain={1.35} />
-      <Terrain dem="/tex/dem/icefront-h.webp" size={[190, 60]} relief={26} floor={0.04} position={[0, 0, -112]} sun={[0.4, 0.3, -0.85]} haze={0.12} palette={ICEFRONT} />
+      <Terrain dem="/tex/dem/icefront-h.webp" size={[190, 60]} relief={26} floor={0.04} position={[0, 0, -112]} sun={[0.4, 0.3, -0.85]} haze={0.24} palette={ICEFRONT} />
       {BERGS.map(([x, z, s, r], i) => (
         // cut ice, not a boulder: the scan's mass stood up, faceted flat, and floated low in the water
         <Fit

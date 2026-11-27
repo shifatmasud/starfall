@@ -79,9 +79,9 @@ export function Scene4Lake() {
     <ScanScene
       hdri={SHARED_SKY}
       bgIntensity={1.25}
-      exposure={1.02}
-      haze={0.12}
-      soften={{ amount: 0.16, radius: 3, mist: 0.03 }}
+      exposure={1.05}
+      haze={0.22}
+      soften={{ amount: 0.26, radius: 3.4, mist: 0.02 }}
       envIntensity={1.4}
       sun={{ from: [4, 6, -3], color: '#fff2dc', intensity: 2.0 }}
       fill={{ sky: '#cfe2ff', ground: '#5a6a30', intensity: 0.6 }}
@@ -89,6 +89,7 @@ export function Scene4Lake() {
       orb={{ position: [0.15, 1.15, -6.5], radius: 0.2 }}
       look={{ light: [0.6, 0.7], tint: '#f4f9ff', rim: '#f2f8ff', haloColor: '#d6ebff', halo: 0.45, bend: 2.0, gain: 1.5 }}
       streak={{ dir: [-1, -0.3], len: 0.85, width: 0.014, color: '#cfe6ff', strength: 0.85 }}
+      fog={{ color: '#cfe0f0', near: 22, far: 220 }}
       clear="#9fb8d6"
       poster={{ portrait: '/poster/scene4-portrait.webp', landscape: '/poster/scene4-landscape.webp' }}
       bloom={0.45}

@@ -3,7 +3,7 @@ import { ScanScene } from './scan/ScanScene'
 import { Fit } from './scan/Fit'
 import { WaterPlane } from './scan/WaterPlane'
 import { NamaqualandBoulder02 } from '../scans/models/NamaqualandBoulder02'
-import { PalmTree } from './scan/PalmTree'
+import { PalmModel } from './scan/PalmModel'
 import { RuinTemple } from './scan/Ruins'
 import { OasisGround, POOL, oasisHeight, poolEdge } from './scan/OasisGround'
 import { GrassMedium02Field, type GrassInstance } from '../scans/models/GrassMedium02'
@@ -22,22 +22,23 @@ const ERG = { lit: '#f1c48f', shade: '#b07a5c', air: '#e8cdb6' }
  *
  * World: the shared clear sky. The pool sits in a bowl in the sand (OasisGround) whose water line
  * wanders with the dune noise, so the shore is irregular and the water feathers out over the shallow
- * sand instead of ending in a cut circle. Palms are built geometry (PalmTree: curved ringed trunks,
- * arching pinnate crowns), the ruins are a fluted sandstone colonnade (Ruins), and every prop is
+ * sand instead of ending in a cut circle. Palms are vinish.dev's free "Date Palm", "Royal Palm" and
+ * "Coconut Palm" models (CC BY 4.0, credited in README and in each generated component), compressed
+ * with gltf-transform and seated so each tree's own height and crown proportion are kept, the ruins are a fluted sandstone colonnade (Ruins), and every prop is
  * placed at `oasisHeight(x, z)` so nothing floats on the carved ground. The far range is real relief
  * (Erg Chebbi, AWS terrain tiles).
  */
 
 const PALMS: [number, number, number, number, number][] = [
-  // x, z, height, lean, yaw
-  [-6.4, -9.8, 4.1, -0.07, 0.4],
-  [-3.2, -9.0, 4.7, 0.05, 2.1],
-  [-1.4, -11.6, 3.5, -0.03, 1.2],
-  [1.4, -12.4, 3.1, 0.05, 2.9],
-  [3.6, -11.2, 2.9, -0.04, 0.9],
-  [5.6, -13.8, 2.5, 0.06, 2.4],
-  [7.8, -15.4, 2.3, -0.05, 1.6],
-  [-8.8, -12.6, 2.8, 0.04, 0.2],
+  // x, z, height, lean, yaw — a grove left of the ruins, the colonnade's own two beside it, then out along the dune
+  [-9.6, -11.4, 3.4, -0.05, 0.4],
+  [-7.8, -9.8, 4.0, 0.04, 2.1],
+  [-5.2, -12.9, 4.3, -0.03, 1.2],
+  [-3.4, -10.6, 4.6, 0.05, 2.9],
+  [-1.2, -13.2, 3.5, -0.04, 0.9],
+  [0.9, -14.4, 3.1, 0.05, 2.4],
+  [3.4, -15.6, 2.8, -0.04, 1.6],
+  [6.4, -17.2, 2.5, 0.05, 0.2],
 ]
 
 const ROCKS: [number, number, number][] = [
@@ -86,12 +87,13 @@ export function Scene5Desert() {
       orb={{ position: [0.75, 1.35, -5.2], radius: 0.2 }}
       look={{ light: [-0.6, 0.7], tint: '#fff8ee', rim: '#fff4e2', haloColor: '#ffe2b8', halo: 0.4, bend: 2.0, gain: 1.45 }}
       streak={{ dir: [1, -0.22], len: 0.92, width: 0.016, color: '#ffd9a0', strength: 0.85 }}
+      fog={{ color: '#f0cfae', near: 9, far: 48 }}
       clear="#d9b48a"
       poster={{ portrait: '/poster/scene5-portrait.webp', landscape: '/poster/scene5-landscape.webp' }}
       bloom={0.5}
-      exposure={1.04}
-      haze={0.1}
-      soften={{ amount: 0.18, radius: 3, mist: 0.03 }}
+      exposure={1.08}
+      haze={0.22}
+      soften={{ amount: 0.3, radius: 3.4, mist: 0.02 }}
     >
       <WaterPlane
         far={4.3}
@@ -124,16 +126,16 @@ export function Scene5Desert() {
       {/* the far dune range, real relief */}
       <Terrain dem="/tex/dem/erg-h.webp" size={[170, 60]} relief={11} floor={0.06} position={[0, -0.3, -62]} sun={SUN5} haze={0.42} palette={ERG} />
       {PALMS.map(([x, z, h, lean, yaw], i) => (
-        <PalmTree key={`palm-${i}`} height={h} lean={lean} yaw={yaw} seed={i * 3 + 1} position={[x, oasisHeight(x, z), z]} fronds={14} />
+        <PalmModel key={`palm-${i}`} height={h} yaw={yaw + lean} variant={i % 3} position={[x, oasisHeight(x, z), z]} />
       ))}
       <RuinTemple position={[-5.4, oasisHeight(-5.4, -13.4), -13.4]} yaw={0.18} scale={1.15} seed={4} />
       {ROCKS.map(([x, z, s], i) =>
         i % 2 === 0 ? (
-          <Fit key={`rock-${i}`} size={s} position={[x, oasisHeight(x, z) - 0.02, z]} rotation={[0, i * 1.3, 0]} tint="#f2c89a" emissive={['#8a5a36', 0.28]}>
+          <Fit key={`rock-${i}`} size={s} position={[x, oasisHeight(x, z) - 0.02, z]} rotation={[0, i * 1.3, 0]} tint="#f2c89a" emissive={['#8a5a36', 0.22]} soft={1}>
             <NamaqualandBoulder02 />
           </Fit>
         ) : (
-          <Fit key={`rock-${i}`} size={s} position={[x, oasisHeight(x, z) - 0.02, z]} rotation={[0, i * 0.9, 0]} tint="#e8c49a" emissive={['#8a5a36', 0.3]}>
+          <Fit key={`rock-${i}`} size={s} position={[x, oasisHeight(x, z) - 0.02, z]} rotation={[0, i * 0.9, 0]} tint="#e8c49a" emissive={['#8a5a36', 0.22]} soft={1}>
             <SandRocksSmall01 />
           </Fit>
         ),
