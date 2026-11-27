@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { applyOcclusion, applySSS, type SSS } from './sss'
+import { paintMaterial } from './painterlyFactory'
 
 /**
  * The painterly shading model, injected into a scanned glTF's MeshStandardMaterial:
@@ -18,92 +19,23 @@ import { applyOcclusion, applySSS, type SSS } from './sss'
  */
 export function applyPainterlySurface(
   mat: THREE.MeshStandardMaterial,
-  opts: { soft: number; rimColor?: string; shadowTint?: string; sunDir?: [number, number, number]; ripple?: number },
+  opts: {
+    soft: number
+    rimColor?: string
+    shadowTint?: string
+    sunDir?: [number, number, number]
+    ripple?: number
+    /** brushwork strength, world-space stroke + macro value noise in albedo and normal */
+    brush?: number
+    /** scrolling Voronoi caustics (underwater surfaces) */
+    caustics?: number
+    /** caustic tiling, world units */
+    causticScale?: number
+    /** the dielectric roughness window (kills plastic highlights) */
+    roughen?: [number, number]
+  },
 ) {
-  const { soft, rimColor = '#fff0d4', shadowTint = '#5a6e8c', sunDir = [0.4, 0.7, -0.5], ripple = 0 } = opts
-  const key = `painterly-${soft.toFixed(2)}-${rimColor}-${shadowTint}-r${ripple.toFixed(2)}`
-  const prev = mat.onBeforeCompile
-  const prevKey = mat.customProgramCacheKey?.bind(mat)
-
-  mat.customProgramCacheKey = () => `${prevKey ? prevKey() : ''}|${key}`
-  mat.onBeforeCompile = (shader, renderer) => {
-    prev?.call(mat, shader, renderer)
-    shader.uniforms.uPainterlySoft = { value: soft }
-    shader.uniforms.uPainterlyRim = { value: new THREE.Color(rimColor) }
-    shader.uniforms.uPainterlyShadow = { value: new THREE.Color(shadowTint) }
-    shader.uniforms.uPainterlySun = { value: new THREE.Vector3(...sunDir).normalize() }
-    shader.uniforms.uPainterlyRipple = { value: ripple }
-
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        varying vec3 vPaintWorldNormal;
-        varying vec3 vPaintWorldPos;`,
-      )
-      .replace(
-        '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>
-        vec4 paintWp = vec4( transformed, 1.0 );
-        #ifdef USE_INSTANCING
-          paintWp = instanceMatrix * paintWp;
-        #endif
-        paintWp = modelMatrix * paintWp;
-        vPaintWorldPos = paintWp.xyz;
-        vPaintWorldNormal = normalize( mat3( modelMatrix ) * objectNormal );`,
-      )
-
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        varying vec3 vPaintWorldNormal;
-        varying vec3 vPaintWorldPos;
-        uniform float uPainterlySoft;
-        uniform vec3 uPainterlyRim;
-        uniform vec3 uPainterlyShadow;
-        uniform vec3 uPainterlySun;
-        uniform float uPainterlyRipple;`,
-      )
-      // wind ripples: the sand's own micro-relief, in the shading normal (a dune is never a clean gradient)
-      .replace(
-        '#include <normal_fragment_maps>',
-        `#include <normal_fragment_maps>
-        if (uPainterlyRipple > 0.001) {
-          float rp = sin(vPaintWorldPos.x * 6.3 + sin(vPaintWorldPos.z * 2.7) * 1.4)
-                   * cos(vPaintWorldPos.z * 9.1 + sin(vPaintWorldPos.x * 1.9) * 0.9);
-          float rq = sin(vPaintWorldPos.x * 17.0 + vPaintWorldPos.z * 5.0) * 0.5;
-          normal = normalize(normal + vec3((rp * 0.55 + rq * 0.45) * uPainterlyRipple * 0.22, rp * uPainterlyRipple * 0.12, 0.0));
-          diffuseColor.rgb *= 1.0 + rp * uPainterlyRipple * 0.09;
-        }`,
-      )
-      // lift the baked-in dark texels before lighting: no black specks, ever
-      .replace(
-        '#include <map_fragment>',
-        `#include <map_fragment>
-        float texLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-        float speckLift = smoothstep(0.18, 0.01, texLum) * uPainterlySoft;
-        diffuseColor.rgb = mix(diffuseColor.rgb, max(diffuseColor.rgb, uPainterlyShadow * 0.42), speckLift * 0.85);`,
-      )
-      // soft light, coloured shadow fill, grazing rim, back-lit lift
-      .replace(
-        '#include <opaque_fragment>',
-        `vec3 pN = normalize(vPaintWorldNormal);
-        vec3 pV = normalize(cameraPosition - vPaintWorldPos);
-        vec3 pL = normalize(uPainterlySun);
-        float wrapLight = pow(clamp(dot(pN, pL) * 0.5 + 0.5, 0.0, 1.0), 1.35);
-        float backScatter = pow(clamp(dot(-pV, pL) * 0.5 + 0.5, 0.0, 1.0), 2.2);
-        float fresnel = pow(1.0 - max(dot(pN, pV), 0.0), 3.0);
-
-        vec3 bounceFill = diffuseColor.rgb * uPainterlyShadow * (0.16 * (1.0 - wrapLight) * uPainterlySoft);
-        vec3 rimGlow = uPainterlyRim * fresnel * (0.07 + 0.16 * backScatter) * uPainterlySoft;
-        vec3 sssGlow = diffuseColor.rgb * uPainterlyRim * (0.1 * wrapLight * backScatter) * uPainterlySoft;
-
-        outgoingLight += bounceFill + rimGlow + sssGlow;
-        #include <opaque_fragment>`,
-      )
-  }
-  mat.needsUpdate = true
+  paintMaterial(mat, opts)
 }
 
 /**

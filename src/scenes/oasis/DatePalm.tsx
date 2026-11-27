@@ -229,6 +229,7 @@ export function DatePalm({
       rimColor: '#ffe8c2',
       shadowTint: '#5c463d',
       sunDir,
+      brush: 0.7,
     })
 
     const fMat = new THREE.MeshStandardMaterial({
@@ -242,6 +243,7 @@ export function DatePalm({
       rimColor: '#fff2be',
       shadowTint: '#365446',
       sunDir,
+      brush: 0.45,
     })
 
     return { trunkGeo: tGeo, crownGeo: cGeo, trunkMat: tMat, frondMat: fMat }

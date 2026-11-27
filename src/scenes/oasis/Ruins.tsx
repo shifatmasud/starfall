@@ -188,6 +188,7 @@ export function Ruins({
       rimColor: '#fff2d8',
       shadowTint: '#8d6c5e',
       sunDir,
+      brush: 0.75,
     })
 
     return { geo: merged, mat: m }

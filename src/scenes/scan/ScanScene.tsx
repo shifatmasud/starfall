@@ -8,6 +8,7 @@ import { PostFX } from '../../gl/PostFX'
 import { makeBackdropTarget } from '../painted/Backdrop'
 import { GlassOrb, type GlassOrbProps } from '../painted/GlassOrb'
 import { LightStreak } from '../painted/LightStreak'
+import { paintClock } from './painterlyFactory'
 import { Bubbles } from '../painted/Bubbles'
 
 /**
@@ -280,6 +281,14 @@ export type ScanSceneProps = {
   children?: ReactNode
 }
 
+/** advances the one clock every painted material's caustics read */
+function PaintClock() {
+  useFrame((_, dt) => {
+    paintClock.value += Math.min(dt, 0.1)
+  })
+  return null
+}
+
 function FrameProbe() {
   useFrame(() => {
     window.__ORB_FRAME__ = (window.__ORB_FRAME__ ?? 0) + 1
@@ -512,6 +521,7 @@ function Inner(props: ScanSceneProps) {
       <Suspense fallback={null}>{children}</Suspense>
       <Orb orb={props.orb} look={props.look} streak={props.streak} bubbles={props.bubbles} glow={props.glow} />
       <FrameProbe />
+      <PaintClock />
       {new URLSearchParams(location.search).has('nopost') ? null : (
         <PostFX
           bloom={bloom}

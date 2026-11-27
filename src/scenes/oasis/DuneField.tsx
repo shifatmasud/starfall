@@ -203,6 +203,7 @@ export function DuneField({
     // Inject procedural wind-ripple micro-relief in fragment shader so sand has tactile grain
     applyPainterlySurface(m, {
       soft: 0.85,
+      brush: 0.75,
       rimColor: '#fff0d6',
       shadowTint: '#9c7864',
       sunDir,

@@ -231,6 +231,7 @@ export function SandstoneBoulder({
       rimColor: '#fff0d4',
       shadowTint: '#8e6858',
       sunDir,
+      brush: 0.6,
     })
 
     return { geo: g, mat: m }

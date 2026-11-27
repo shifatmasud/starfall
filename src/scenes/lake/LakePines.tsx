@@ -208,6 +208,7 @@ export function LakePines({
       rimColor: '#fff0cc',
       shadowTint: '#485862',
       sunDir,
+      brush: 0.7,
     })
 
     const fMat = new THREE.MeshStandardMaterial({

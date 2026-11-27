@@ -48,7 +48,7 @@ export function ReefFloor({ radius = 26, y = 0 }: { radius?: number; y?: number 
     g.computeVertexNormals()
     g.setAttribute('color', new THREE.BufferAttribute(col, 3))
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 })
-    applyPainterlySurface(m, { soft: 0.95, rimColor: '#cfeeff', shadowTint: '#1c4258', sunDir: [-0.1, 1, -0.2] })
+    applyPainterlySurface(m, { soft: 0.95, rimColor: '#cfeeff', shadowTint: '#1c4258', sunDir: [-0.1, 1, -0.2], brush: 0.95, caustics: 0.26, causticScale: 5.2 })
     return { geo: g, mat: m }
   }, [radius, y])
   return <mesh geometry={geo} material={mat} position={[0, 0, 0]} />
@@ -223,7 +223,7 @@ export function ReefRock({
     g.computeVertexNormals()
     g.setAttribute('color', new THREE.BufferAttribute(col, 3))
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 })
-    applyPainterlySurface(m, { soft: 0.92, rimColor: '#9fe0f4', shadowTint: '#103446', sunDir: [-0.15, 1, -0.25] })
+    applyPainterlySurface(m, { soft: 0.92, rimColor: '#9fe0f4', shadowTint: '#103446', sunDir: [-0.15, 1, -0.25], brush: 0.75, caustics: 0.15, causticScale: 4.6 })
     return { geo: g, mat: m }
   }, [seed])
   return (
@@ -298,7 +298,7 @@ export function ReefLife() {
     // light and the surface shafts have to reach it, or the coral reads as a flat sticker. The
     // painterly response (wrap light, coloured bounce, cyan rim) keeps it painted rather than plastic.
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.9, metalness: 0 })
-    applyPainterlySurface(m, { soft: 0.95, rimColor: '#a8e8ff', shadowTint: '#1b4a63', sunDir: [-0.15, 1, -0.25] })
+    applyPainterlySurface(m, { soft: 0.95, rimColor: '#a8e8ff', shadowTint: '#1b4a63', sunDir: [-0.15, 1, -0.25], brush: 0.55, caustics: 0.12, causticScale: 4.8 })
     return m
   }, [])
 

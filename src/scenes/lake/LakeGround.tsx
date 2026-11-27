@@ -303,6 +303,7 @@ export function LakeGround({
 
     applyPainterlySurface(m, {
       soft: 0.85,
+      brush: 0.7,
       rimColor: '#fff4c8',
       shadowTint: '#364b42',
       sunDir,
