@@ -206,7 +206,7 @@ function DistantTreelineBand({ sunDir = SUN4 }: { sunDir?: [number, number, numb
     })
 
     const list: { x: number; y: number; z: number; sx: number; sy: number; yaw: number; tint: THREE.Color }[] = []
-    const count = 240
+    const count = 100
     const cNearTint = new THREE.Color('#c8dcc8')
     const cFarTint = new THREE.Color('#84a8d2')
 
@@ -259,6 +259,7 @@ export function LakeRange() {
       <Terrain
         dem="/tex/dem/alps-h.webp"
         size={[280, 64]}
+        segments={[96, 32]}
         relief={22}
         floor={0.08}
         position={[-34, -0.9, -132]}
@@ -275,6 +276,7 @@ export function LakeRange() {
       <Terrain
         dem="/tex/dem/ridge-h.webp"
         size={[80, 44]}
+        segments={[72, 28]}
         relief={12.0}
         floor={0.04}
         position={[-42, -0.7, -80]}
@@ -288,6 +290,7 @@ export function LakeRange() {
       <Terrain
         dem="/tex/dem/ridge-h.webp"
         size={[68, 48]}
+        segments={[72, 30]}
         relief={13.0}
         floor={0.03}
         position={[30, -0.8, -46]}

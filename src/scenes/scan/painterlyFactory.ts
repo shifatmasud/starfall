@@ -33,6 +33,8 @@ const COMMON_GLSL = /* glsl */ `
   uniform float uPaintCausticScale;
   uniform float uPaintTime;
   uniform vec2 uPaintRough;
+  uniform float uWaterY;
+  uniform float uWetBand;
 
   float pMod289(float x){ return x - floor(x * (1.0 / 289.0)) * 289.0; }
   float pHash(vec3 p){
@@ -122,6 +124,10 @@ export type PaintOptions = {
   causticScale?: number
   /** roughness floor and ceiling for dielectrics: kills plastic highlights and dead matte */
   roughen?: [number, number]
+  /** the water surface height in world units: a wet band above it, absorption below (icebergs, banks) */
+  waterY?: number
+  /** how tall the wet band is, world units */
+  wetBand?: number
 }
 
 /**
@@ -140,9 +146,11 @@ export function paintMaterial(mat: THREE.MeshStandardMaterial, opts: PaintOption
     caustics = 0,
     causticScale = 1.6,
     roughen = [0.65, 0.95],
+    waterY,
+    wetBand = 0.45,
   } = opts
 
-  const key = `paint-${soft.toFixed(2)}-${rimColor}-${shadowTint}-r${ripple.toFixed(2)}-b${brush.toFixed(2)}@${brushScale}-c${caustics.toFixed(2)}@${causticScale}-q${roughen[0]}-${roughen[1]}`
+  const key = `paint-w${waterY ?? 'x'}${wetBand}-${soft.toFixed(2)}-${rimColor}-${shadowTint}-r${ripple.toFixed(2)}-b${brush.toFixed(2)}@${brushScale}-c${caustics.toFixed(2)}@${causticScale}-q${roughen[0]}-${roughen[1]}`
   const prev = mat.onBeforeCompile
   const prevKey = mat.customProgramCacheKey?.bind(mat)
 
@@ -159,6 +167,8 @@ export function paintMaterial(mat: THREE.MeshStandardMaterial, opts: PaintOption
     shader.uniforms.uPaintCausticScale = { value: causticScale }
     shader.uniforms.uPaintTime = paintClock
     shader.uniforms.uPaintRough = { value: new THREE.Vector2(roughen[0], roughen[1]) }
+    shader.uniforms.uWaterY = { value: waterY ?? -1e4 }
+    shader.uniforms.uWetBand = { value: wetBand }
 
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -213,6 +223,18 @@ export function paintMaterial(mat: THREE.MeshStandardMaterial, opts: PaintOption
         }`,
       )
 
+      // the waterline as a material phenomenon: a wet band above the surface (darker, glossier) and
+      // turquoise absorption below it, so an iceberg sits *in* the sea instead of on top of it
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>
+        if (uWaterY > -1e3) {
+          float dyW = vPaintWorldPos.y - uWaterY;
+          if (dyW >= 0.0) roughnessFactor = mix(0.42, roughnessFactor, smoothstep(0.0, uWetBand, dyW));
+          else roughnessFactor = mix(roughnessFactor, 0.6, smoothstep(0.0, 0.9, -dyW));
+        }`,
+      )
+
       // lift the baked-in dark texels before lighting: no black specks, ever
       .replace(
         '#include <map_fragment>',
@@ -220,6 +242,16 @@ export function paintMaterial(mat: THREE.MeshStandardMaterial, opts: PaintOption
         float texLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
         float speckLift = smoothstep(0.18, 0.01, texLum) * uPainterlySoft;
         diffuseColor.rgb = mix(diffuseColor.rgb, max(diffuseColor.rgb, uPainterlyShadow * 0.42), speckLift * 0.85);
+        if (uWaterY > -1e3) {
+          float dyW2 = vPaintWorldPos.y - uWaterY;
+          if (dyW2 < 0.0) {
+            float sub = smoothstep(0.0, 1.1, -dyW2);
+            diffuseColor.rgb *= mix(vec3(1.0), vec3(0.30, 0.70, 0.62), sub * 0.9);
+          } else {
+            float wet = 1.0 - smoothstep(0.0, uWetBand, dyW2);
+            diffuseColor.rgb *= mix(1.0, 0.66, wet);
+          }
+        }
         if (uPaintBrush > 0.001) {
           // the stroke is a 3D noise field in world space (no seams, no triplanar taps): one octave
           // for the brush, one macro octave that groups the strokes the way paint is blocked in

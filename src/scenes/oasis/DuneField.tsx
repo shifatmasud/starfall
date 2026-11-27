@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { applyPainterlySurface } from '../scan/Fit'
+import { sampleDemWorld } from '../dem'
 
 export const POOL = { x: -0.35, z: -6.1, rx: 4.5, rz: 3.1 }
 
@@ -82,6 +83,11 @@ export function oasisHeight(x: number, z: number): number {
   // Left-foreground gentle dune rise
   const leftRise = 1 - THREE.MathUtils.smoothstep(Math.hypot((x + 4.4) / 3.2, (z + 1.6) / 2.4), 0.3, 1.3)
   h += leftRise * 0.32
+
+  // the real field: Erg Chebbi's own relief (AWS Terrain Tiles, SRTM + GMTED, Gaussian-smoothed at
+  // bake time) laid under the whole basin, faded out inside the pool so the water still sits in it
+  const outside = THREE.MathUtils.smoothstep(radial, 0.92, 1.22)
+  h += (sampleDemWorld('dunes', x, z, 74, [3.1, -2.4]) - 0.5) * 1.15 * outside
 
   return h
 }

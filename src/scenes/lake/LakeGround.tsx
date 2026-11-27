@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { applyPainterlySurface } from '../scan/Fit'
+import { sampleDemWorld } from '../dem'
 
 function hash2(x: number, y: number): number {
   const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123
@@ -54,7 +55,12 @@ export function lakeHeight(x: number, z: number): number {
     const leftLift =
       THREE.MathUtils.smoothstep(-x, -2.0, 9.0) * 0.38 * THREE.MathUtils.smoothstep(distFromShore, 0.2, 5.5)
     const shoreFeather = THREE.MathUtils.smoothstep(distFromShore, 0.0, 1.4)
-    return 0.02 + slope + leftLift + (hummock + microTuft) * shoreFeather
+    // the meadow's real relief (Lake Louise valley, AWS Terrain Tiles, smoothed): the turf rolls the
+    // way the valley does instead of sitting on a procedural hummock
+    const real = (sampleDemWorld('meadow', x, z, 88, [-1.7, 4.2]) - 0.5) * 0.62 *
+      THREE.MathUtils.smoothstep(distFromShore, 1.2, 9.0)
+    // never below the waterline: the meadow rolls, the lake keeps its bank
+    return Math.max(0.045, 0.02 + slope + leftLift + (hummock + microTuft + real) * shoreFeather)
   }
 
   const lakeDist = -distFromShore
@@ -192,8 +198,8 @@ export function LakeGround({
 
   const { geo, mat, turfGeo, turfMat, turfInstances, flowerGeo, flowerMat, flowerInstances } = useMemo(() => {
     // 110x126 grid (~27.7k tris) — keeps total scene well below 250k tris on SwiftShader
-    const segX = 110
-    const segZ = 126
+    const segX = 96
+    const segZ = 110
     const g = new THREE.PlaneGeometry(76, 74, segX, segZ)
     g.rotateX(-Math.PI / 2)
     g.translate(0, 0, -32)

@@ -243,5 +243,6 @@ export async function settle(ms = 900) {
 declare global {
   interface Window {
     __ORB_FRAME__?: number
+    __TRIS__?: number
   }
 }

@@ -102,7 +102,7 @@ layout(location=0) out vec4 outColor;
 uniform sampler2D uEnv; uniform mat3 uEnvRot; uniform float uHasEnv; uniform vec3 uFallback;
 uniform vec4 uWaves[${N_WAVES}];   // k, omega, amplitude, phase
 uniform vec2 uDirs[${N_WAVES}];
-uniform float uTime, uMpu, uMss, uLift, uDepth, uPool, uPoolR, uF0, uIor, uAmpSum, uQ, uDetail, uFlat, uPoolStretch, uFeather;
+uniform float uTime, uMpu, uMss, uLift, uDepth, uPool, uPoolR, uF0, uIor, uAmpSum, uQ, uDetail, uFlat, uPoolStretch, uFeather, uFoam;
 uniform vec2 uPoolC;
 uniform sampler2D uRefl, uRefr; uniform mat4 uReflVP, uMainVP; uniform float uUseRefl, uUseRefr, uShore, uNear, uSparkle, uSkyBright, uReflGain, uRefrDepth;
 uniform vec2 uAt; uniform float uEncode;
@@ -250,7 +250,23 @@ void main(){
   vec3 col = F * refl + (1.0 - F) * under + uSunCol * (glint * 1.1 + glit);
   // the body's own tint carries into the reflection, so a lagoon stays teal and an arctic sea cerulean at any angle
   col = mix(col, col * uTint, 0.45);
-  float alpha = mix(1.0, smoothstep(0.0, 0.45, depth), uFeather);
+  // the shallow lip: water running out over sand dissolves through a wet band, a turquoise shelf and
+  // a broken foam line — never a polygon edge you can trace with a finger
+  if (uFoam > 0.5) {
+    float lip = 1.0 - smoothstep(0.0, 0.26, depth);
+    float shelf = 1.0 - smoothstep(0.0, 0.55, depth);
+    col = mix(col, vec3(0.30, 0.62, 0.60), shelf * 0.22);
+    float riffle = 0.55 + 0.45 * sin(depth * 46.0 - uTime * 1.4 + sin(vW.x * 2.6 + vW.z * 1.7) * 2.4);
+    float lace = smoothstep(0.35, 0.9, riffle) * lip;
+    col = mix(col, vec3(0.93, 0.97, 0.97), lace * 0.5);
+  }
+  float alpha = mix(1.0, smoothstep(0.0, 0.34, depth), uFeather);
+  // the pool edge dissolves over the outer fifth of the bowl, not over the last two pixels: the
+  // shallow ring carries the sand through the surface instead of a traced polygon outline
+  if (uPool > 0.5) {
+    float rEdge = length((vW.xz - uPoolC) / vec2(uPoolStretch, 1.0)) / uPoolR;
+    alpha *= mix(1.0, 1.0 - smoothstep(0.80, 1.0, rEdge), uFeather);
+  }
   outColor = vec4(uEncode > 0.5 ? linearToSrgb(col) : col, alpha);   // sRGB in the frame (the post chain reads it as display values), linear in the data targets
 }`
 
@@ -318,7 +334,7 @@ export function WaterPlane({
         uTime: { value: 0 }, uMpu: { value: metersPerUnit }, uMss: { value: coxMunkMss(wind) }, uLift: { value: lift },
         uQ: { value: steep }, uDetail: { value: detail }, uFlat: { value: flat },
         uDepth: { value: depth }, uPool: { value: pool ? 1 : 0 }, uPoolR: { value: far }, uPoolC: { value: new THREE.Vector2(at[0], at[1]) },
-        uPoolStretch: { value: poolStretch }, uFeather: { value: feather }, uTint: { value: new THREE.Vector3(...tint) },
+        uPoolStretch: { value: poolStretch }, uFeather: { value: feather }, uFoam: { value: feather > 0 ? 1 : 0 }, uTint: { value: new THREE.Vector3(...tint) },
         uF0: { value: F0_WATER }, uIor: { value: IOR_WATER },
         uAmpSum: { value: Math.sqrt(waves.reduce((s, w) => s + 0.5 * w.a * w.a, 0)) * 2 },
         uA: { value: v3(iop.a) }, uB: { value: v3(iop.b) }, uBb: { value: v3(iop.bb) }, uRinf: { value: v3(rrs(chl)) }, uKd: { value: v3(kd(chl)) },

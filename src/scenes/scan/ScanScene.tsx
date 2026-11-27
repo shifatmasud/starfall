@@ -108,6 +108,12 @@ function ensureAtmosphericFogPatch() {
       float altAtten = mix(1.0, exp(-relY * uHazeHeightFalloff), 0.65);
       fogFactor = clamp(fogFactor * altAtten, 0.0, 0.96);
 
+      // two-band aerial perspective. Near: untouched. Mid: the tonal planes step back — contrast
+      // compresses and colour drains toward the horizon bounce before anything is veiled, which is
+      // what makes a hillside behind another hillside read as further away.
+      float midBand = smoothstep(0.06, 0.42, fogFactor) * (1.0 - smoothstep(0.55, 0.92, fogFactor));
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * 0.86 + fogColor * 0.14, midBand * 0.55);
+
       // Mie forward scattering: the air warms and brightens toward the sun
       float sunAmt = max(dot(rayDir, normalize(uSunDir)), 0.0);
       float mie = pow(sunAmt, 5.0) * uMieStrength + pow(sunAmt, 1.6) * (uMieStrength * 0.35);
@@ -290,8 +296,25 @@ function PaintClock() {
 }
 
 function FrameProbe() {
+  const scene = useThree((s) => s.scene)
+  const counted = useRef(false)
   useFrame(() => {
     window.__ORB_FRAME__ = (window.__ORB_FRAME__ ?? 0) + 1
+    // QA: the scene's triangle count once everything has streamed in, so the SwiftShader budget
+    // stays measured rather than assumed
+    if (!counted.current) {
+      let tris = 0
+      scene.traverse((o) => {
+        const m = o as THREE.Mesh & { count?: number }
+        if (!m.isMesh || !m.geometry) return
+        const g = m.geometry
+        const n = g.index ? g.index.count / 3 : (g.attributes.position?.count ?? 0) / 3
+        tris += n * (m.count ?? 1)
+      })
+      window.__TRIS__ = Math.round(tris)
+      ;(window as unknown as { __SCENE__?: THREE.Scene }).__SCENE__ = scene
+      if ((window.__ORB_FRAME__ ?? 0) > 30) counted.current = true
+    }
   })
   return null
 }

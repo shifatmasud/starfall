@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { applyPainterlySurface } from '../scan/Fit'
 import { SoftShadow } from '../scan/SoftShadow'
+import { sampleDemWorld } from '../dem'
 
 function mulberry32(seed: number) {
   let a = seed >>> 0
@@ -22,8 +23,8 @@ export function ReefFloor({ radius = 26, y = 0 }: { radius?: number; y?: number 
     g.rotateX(-Math.PI / 2)
     const pos = g.attributes.position as THREE.BufferAttribute
     const col = new Float32Array(pos.count * 3)
-    const cLit = new THREE.Color('#7aa2a6')
-    const cMid = new THREE.Color('#457685')
+    const cLit = new THREE.Color('#93a79e')
+    const cMid = new THREE.Color('#5f7b7c')
     const cDeep = new THREE.Color('#153e54')
     const cPool = new THREE.Color('#cfc6a6')
     const tmp = new THREE.Color()
@@ -32,7 +33,10 @@ export function ReefFloor({ radius = 26, y = 0 }: { radius?: number; y?: number 
       const z = pos.getZ(i)
       const r = Math.hypot(x, z)
       const ripple = Math.sin(x * 1.15 + z * 0.35) * 0.5 + Math.sin(z * 1.9 - x * 0.4) * 0.35
-      const yy = y + ripple * 0.045 + Math.sin(x * 3.3) * Math.cos(z * 2.7) * 0.012
+      // the seabed's real bathymetry (GEBCO 2020, Molasses Reef, Florida Keys), smoothed: the floor
+      // rises and falls the way the reef shelf does instead of being a swept plane
+      const real = (sampleDemWorld('seabed', x, z, 30, [1.3, -0.8]) - 0.5) * 1.15
+      const yy = y + real + ripple * 0.045 + Math.sin(x * 3.3) * Math.cos(z * 2.7) * 0.012
       pos.setY(i, yy)
       const pool = 1 - THREE.MathUtils.smoothstep(r, 0.4, 4.2)
       const far = THREE.MathUtils.smoothstep(r, 6, 24)
@@ -48,7 +52,7 @@ export function ReefFloor({ radius = 26, y = 0 }: { radius?: number; y?: number 
     g.computeVertexNormals()
     g.setAttribute('color', new THREE.BufferAttribute(col, 3))
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 })
-    applyPainterlySurface(m, { soft: 0.95, rimColor: '#cfeeff', shadowTint: '#1c4258', sunDir: [-0.1, 1, -0.2], brush: 0.95, caustics: 0.26, causticScale: 5.2 })
+    applyPainterlySurface(m, { soft: 0.95, rimColor: '#cfeeff', shadowTint: '#1c4258', sunDir: [-0.1, 1, -0.2], brush: 0.95, caustics: 0.17, causticScale: 5.2 })
     return { geo: g, mat: m }
   }, [radius, y])
   return <mesh geometry={geo} material={mat} position={[0, 0, 0]} />

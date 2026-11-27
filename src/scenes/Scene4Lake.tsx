@@ -177,6 +177,7 @@ export function Scene4Lake() {
       <Terrain
         dem="/tex/dem/ridge-h.webp"
         size={[64, 42]}
+        segments={[64, 26]}
         relief={7.5}
         floor={0.03}
         position={[32, -0.7, -38]}
@@ -220,8 +221,8 @@ export function Scene4Lake() {
 
       {/* Budget-safe 3,200 grass tufts + 480 drift-clustered daisies (total scene ~165k tris) */}
       <LakeMeadow
-        grassCount={lowTier ? 1600 : 3200}
-        daisyCount={lowTier ? 220 : 480}
+        grassCount={lowTier ? 790 : 1900}
+        daisyCount={lowTier ? 92 : 280}
         sunDir={SUN4_DIR}
       />
     </ScanScene>

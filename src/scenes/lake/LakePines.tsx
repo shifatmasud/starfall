@@ -64,13 +64,13 @@ function buildLayeredPinePrototype(seed: number): {
 
   // inner canopy mass: a lathe cone warped by noise, dark shaded-green, fills every gap
   const profile: THREE.Vector2[] = []
-  const rings = 16
+  const rings = 12
   for (let r = 0; r <= rings; r++) {
     const t = r / rings
     const rad = Math.pow(1 - t, 0.74) * 0.36 + 0.010
     profile.push(new THREE.Vector2(rad, 0.12 + t * 0.86))
   }
-  const core = new THREE.LatheGeometry(profile, 22)
+  const core = new THREE.LatheGeometry(profile, 16)
   {
     const cp = core.attributes.position as THREE.BufferAttribute
     const cc = new Float32Array(cp.count * 3)
@@ -94,7 +94,7 @@ function buildLayeredPinePrototype(seed: number): {
   }
 
   // needle pads: small smooth icospheres, squashed and noisy, layered over the core volume
-  const padCount = 96
+  const padCount = 24
   const padIco = new THREE.IcosahedronGeometry(1, 1)
   for (let i = 0; i < padCount; i++) {
     const u = rand()

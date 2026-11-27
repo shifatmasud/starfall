@@ -33,6 +33,9 @@ export function applyPainterlySurface(
     causticScale?: number
     /** the dielectric roughness window (kills plastic highlights) */
     roughen?: [number, number]
+    /** the water surface height: wet band above, turquoise absorption below */
+    waterY?: number
+    wetBand?: number
   },
 ) {
   paintMaterial(mat, opts)

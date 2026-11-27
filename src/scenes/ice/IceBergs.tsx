@@ -152,7 +152,7 @@ export function IceBergs({
       transparent: true,
       opacity: 0.98,
     })
-    applyPainterlySurface(m, { soft: 0.9, rimColor: '#ffffff', shadowTint: '#7aa2cc', sunDir, brush: 0.55 })
+    applyPainterlySurface(m, { soft: 0.9, rimColor: '#ffffff', shadowTint: '#7aa2cc', sunDir, brush: 0.55, waterY: 0, wetBand: 0.55 })
     return { geo: merged, mat: m }
   }, [bergs, sunDir])
 
