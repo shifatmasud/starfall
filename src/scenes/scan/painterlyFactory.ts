@@ -255,9 +255,14 @@ export function paintMaterial(mat: THREE.MeshStandardMaterial, opts: PaintOption
         if (uPaintBrush > 0.001) {
           // the stroke is a 3D noise field in world space (no seams, no triplanar taps): one octave
           // for the brush, one macro octave that groups the strokes the way paint is blocked in
-          float tri = pNoise(vPaintWorldPos * uPaintBrush * 2.2 + 3.0);
+          // the lattice is turned about the vertical and read at two scales, so the stroke never
+          // shows its cell boundaries as a grid on a grazing surface (a checkerboard is the one
+          // artifact no amount of grading hides)
+          vec3 bwp2 = vPaintWorldPos * uPaintBrush * 2.2;
+          bwp2.xz = mat2(0.80, -0.60, 0.60, 0.80) * bwp2.xz;
+          float tri = pNoise(bwp2 + 3.0) * 0.66 + pNoise(bwp2 * 2.7 + 11.0) * 0.34;
           float macro = pNoise(vPaintWorldPos * uPaintBrush * 0.5 + 5.0);
-          float v = (tri - 0.5) * 0.85 + (macro - 0.5) * 0.75;
+          float v = (tri - 0.5) * 0.58 + (macro - 0.5) * 0.52;
           diffuseColor.rgb *= clamp(1.0 + v * uPaintBrush, 0.55, 1.45);
         }`,
       )
