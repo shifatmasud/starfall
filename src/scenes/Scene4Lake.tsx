@@ -100,7 +100,7 @@ export function Scene4Lake() {
     <ScanScene
       hdri={SHARED_SKY}
       skyYaw={150}
-      bgIntensity={1.68}
+      bgIntensity={0.8}
       envIntensity={1.45}
       sun={{ from: SUN4_POS, color: '#fff3dc', intensity: 2.15 }}
       fill={{ sky: '#e2eeff', ground: '#6c8842', intensity: 1.05 }}
@@ -127,10 +127,12 @@ export function Scene4Lake() {
       clear="#c4dcf6"
       poster={{ portrait: '/poster/scene4-portrait.webp', landscape: '/poster/scene4-landscape.webp' }}
       bloom={0.4}
-      exposure={1.22}
-      haze={0.14}
+      exposure={1.16}
+      haze={0.1}
       shadowFloor="#2c4260"
       grade={0.3}
+      saturation={1.05}
+      splitTone={{ shadow: '#7c9ac6', highlight: '#ffeed6', strength: 0.1 }}
       soften={{ amount: 0.26, radius: 2.2, mist: 0.014, mistColor: '#e0eeff' }}
     >
       {/* Deep blue lake (#3d6ea8 mid, #2c5480 far) with crisp mirrored mountain range & zero white smears */}

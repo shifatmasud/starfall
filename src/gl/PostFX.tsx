@@ -77,6 +77,12 @@ uniform float uExposure;
 uniform float uGrade;
 uniform float uTime;
 uniform vec3 uShadowFloor;
+uniform vec3 uShadowTint;
+uniform vec3 uHighlightTint;
+uniform float uSplitTone;
+uniform float uSaturation;
+uniform float uBlackPoint;
+uniform float uGamma;
 ${SRGB_GLSL}
 float luma709(vec3 c) {
   return dot(c, vec3(0.2126, 0.7152, 0.0722));
@@ -99,18 +105,33 @@ vec3 animeCurve(vec3 c, vec3 floorCol) {
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec3 col = max(inputColor.rgb, 0.0) * uExposure;
+  // the black point: a shadow that reads as air, not as a hole
+  col = max(col - uBlackPoint, 0.0) / max(1.0 - uBlackPoint, 0.001);
   col = animeCurve(col, uShadowFloor);
 
   float lum = luma709(col);
   // the pastel roll-off: deep shadows and blown highlights lose chroma, the mid-tones keep it
   float extreme = smoothstep(0.18, 0.04, lum) * 0.45 + smoothstep(0.72, 0.98, lum) * 0.55;
   float sat = mix(0.92, 0.62, clamp(extreme, 0.0, 1.0));
-  col = mix(vec3(lum), col, mix(1.0, sat, uGrade));
+  col = mix(vec3(lum), col, mix(1.0, sat, uGrade) * uSaturation);
 
   // a breath of contrast compression: raw scan contrast is the enemy
   col = (col - 0.5) * mix(1.0, 1.06, uGrade) + 0.5;
 
-  // cool the shadows a breath, warm the highlights
+  // split tone: the shadows cool toward the sky's bounce, the highlights warm toward the sun,
+  // each normalised to its own luminance so the tone curve keeps its shape
+  float lum2 = luma709(clamp(col, 0.0, 1.0));
+  float shadowW = 1.0 - smoothstep(0.04, 0.42, lum2);
+  float highW = smoothstep(0.50, 0.98, lum2);
+  vec3 shadowTint = uShadowTint / max(luma709(uShadowTint), 0.001);
+  vec3 highTint = uHighlightTint / max(luma709(uHighlightTint), 0.001);
+  col *= mix(vec3(1.0), shadowTint, shadowW * uSplitTone);
+  col *= mix(vec3(1.0), highTint, highW * uSplitTone);
+
+  // the print gamma: pivots at white, so the midtones settle without touching the highlights
+  if (uGamma != 1.0) col = pow(max(col, 0.0), vec3(uGamma));
+
+  // a breath of hue: cool the shadows a touch, warm the highlights (the grade's own split)
   col += vec3(-0.012, -0.004, 0.022) * (1.0 - smoothstep(0.08, 0.52, lum)) * uGrade;
   col += vec3(0.014, 0.007, -0.010) * smoothstep(0.48, 0.94, lum) * uGrade;
 
@@ -293,6 +314,12 @@ class FinalEffect extends Effect {
         ['uGrade', new THREE.Uniform(0.65)],
         ['uTime', new THREE.Uniform(0)],
         ['uShadowFloor', new THREE.Uniform(new THREE.Color('#1a2230'))],
+        ['uShadowTint', new THREE.Uniform(new THREE.Color('#8ea6c4'))],
+        ['uHighlightTint', new THREE.Uniform(new THREE.Color('#ffd9b0'))],
+        ['uSplitTone', new THREE.Uniform(0.15)],
+        ['uSaturation', new THREE.Uniform(1)],
+        ['uBlackPoint', new THREE.Uniform(0)],
+        ['uGamma', new THREE.Uniform(1)],
       ]),
     })
   }
@@ -328,6 +355,14 @@ export type PostFXProps = {
   shadowFloor?: string
   /** grade strength 0..1 (split tone, pastel roll-off, vignette) */
   grade?: number
+  /** saturation trim applied after the pastel roll-off (1 = as graded) */
+  saturation?: number
+  /** warm-highlight / cool-shadow split tone: the tint colours and how far the split runs (0..1) */
+  splitTone?: { shadow?: string; highlight?: string; strength?: number }
+  /** a lifted black point: values below it are crushed to the shadow floor */
+  blackPoint?: number
+  /** print gamma, pivoting at white (1 = off; 1.2 settles the midtones) */
+  gamma?: number
 }
 
 /** The live cursor-trail field, so the app's pointer listeners can paint it. */
@@ -343,6 +378,10 @@ export function PostFX({
   haze = 0,
   shadowFloor = '#1a2230',
   grade = 0.65,
+  saturation = 1,
+  splitTone,
+  blackPoint = 0,
+  gamma = 1,
 }: PostFXProps) {
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
@@ -468,7 +507,17 @@ export function PostFX({
     const uGr = composer.final.uniforms.get('uGrade')
     if (uGr) uGr.value = grade
     ;(composer.final.uniforms.get('uShadowFloor')!.value as THREE.Color).set(shadowFloor)
-  }, [composer, bloom, exposure, haze, grade, shadowFloor, soften?.amount, soften?.radius, soften?.mist, soften?.mistColor, gl])
+    const uSat = composer.final.uniforms.get('uSaturation')
+    if (uSat) uSat.value = saturation
+    const uTone = composer.final.uniforms.get('uSplitTone')
+    if (uTone) uTone.value = splitTone?.strength ?? 0.15
+    ;(composer.final.uniforms.get('uShadowTint')!.value as THREE.Color).set(splitTone?.shadow ?? '#8ea6c4')
+    ;(composer.final.uniforms.get('uHighlightTint')!.value as THREE.Color).set(splitTone?.highlight ?? '#ffd9b0')
+    const uBP = composer.final.uniforms.get('uBlackPoint')
+    if (uBP) uBP.value = blackPoint
+    const uG = composer.final.uniforms.get('uGamma')
+    if (uG) uG.value = gamma
+  }, [composer, bloom, exposure, haze, grade, shadowFloor, saturation, splitTone?.strength, splitTone?.shadow, splitTone?.highlight, blackPoint, gamma, soften?.amount, soften?.radius, soften?.mist, soften?.mistColor, gl])
 
   // The chain runs at the canvas's own device resolution, capped by a pixel budget: several RGBA16F
   // buffers at full phone resolution is how a phone loses its context.

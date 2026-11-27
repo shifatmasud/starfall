@@ -70,10 +70,13 @@ export function Scene5Desert() {
       clear="#e6cbb0"
       poster={{ portrait: '/poster/scene5-portrait.webp', landscape: '/poster/scene5-landscape.webp' }}
       bloom={0.34}
-      exposure={0.96}
+      exposure={1.42}
       haze={0.08}
       shadowFloor="#241f22"
       grade={0.45}
+      saturation={0.74}
+      gamma={1.2}
+      splitTone={{ shadow: '#7d94bb', highlight: '#ffd7a6', strength: 0.26 }}
       soften={{ amount: 0.2, radius: 2.4, mist: 0.005, mistColor: '#f5e2cc' }}
     >
       {/* Measured NOAA NDBC pool spectrum with deep teal-emerald absorption & clear palm reflection */}

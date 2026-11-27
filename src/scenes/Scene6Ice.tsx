@@ -35,10 +35,13 @@ export function Scene6Ice() {
       clear="#94b8d8"
       poster={{ portrait: '/poster/scene6-portrait.webp', landscape: '/poster/scene6-landscape.webp' }}
       bloom={0.38}
-      exposure={1.04}
+      exposure={1.62}
       haze={0.12}
       shadowFloor="#243a56"
       grade={0.45}
+      saturation={0.8}
+      gamma={1.05}
+      splitTone={{ shadow: '#7fa0cf', highlight: '#fff0d8', strength: 0.2 }}
       soften={{ amount: 0.22, radius: 2.5, mist: 0.005, mistColor: '#dcecf8' }}
     >
       <WaterPlane near={0} y={0.0} spectrum="sea" peakWave={2.9} hs={0.14} bearing={242} detail={0.06} steep={0.42} flat={0.02} spread={1.9} bands={16} wind={3.2} fetch={30000} chl={0.45} metersPerUnit={2.5} sunFrom={[6, 2.8, -14]} sunColor="#fff6e6" lift={3.4} tint={[0.6, 0.88, 1.05]} sparkle={1.6} skyBright={0.55} reflGain={1.15} />

@@ -32,10 +32,13 @@ export function Scene8Seabed() {
       clear="#0a3858"
       poster={{ portrait: '/poster/scene8-portrait.webp', landscape: '/poster/scene8-landscape.webp' }}
       bloom={0.42}
-      exposure={0.95}
+      exposure={1.34}
       haze={0.13}
       shadowFloor="#1a3552"
       grade={0.45}
+      saturation={1.1}
+      gamma={1.16}
+      splitTone={{ shadow: '#6f9fd0', highlight: '#ffe2b4', strength: 0.22 }}
       soften={{ amount: 0.24, radius: 2.6, mist: 0.006, mistColor: '#2c82a8' }}
     >
       <ReefFloor radius={26} />

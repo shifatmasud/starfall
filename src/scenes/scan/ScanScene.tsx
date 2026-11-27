@@ -167,6 +167,10 @@ export type ScanSceneProps = {
   haze?: number
   shadowFloor?: string
   grade?: number
+  saturation?: number
+  splitTone?: { shadow?: string; highlight?: string; strength?: number }
+  blackPoint?: number
+  gamma?: number
   children?: ReactNode
 }
 
@@ -401,6 +405,10 @@ function Inner(props: ScanSceneProps) {
           haze={props.haze}
           shadowFloor={props.shadowFloor}
           grade={props.grade}
+          saturation={props.saturation}
+          splitTone={props.splitTone}
+          blackPoint={props.blackPoint}
+          gamma={props.gamma}
         />
       )}
     </>
