@@ -96,11 +96,11 @@ export function Scene5Desert() {
         metersPerUnit={0.6}
         depth={12}
         bottom={[0.12, 0.2, 0.18]}
-        tint={[0.24, 0.6, 0.58]}
+        tint={[0.16, 0.46, 0.48]}
         spread={1.5}
         sunFrom={SUN5}
         sunColor="#ffebd0"
-        lift={0.62}
+        lift={0.5}
         skyBright={0.62}
         reflGain={1.55}
       />

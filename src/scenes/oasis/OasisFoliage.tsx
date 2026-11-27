@@ -180,7 +180,7 @@ export function SandstoneBoulder({
   sunDir?: [number, number, number]
 }) {
   const { geo, mat } = useMemo(() => {
-    const g = new THREE.IcosahedronGeometry(1, 3)
+    const g = new THREE.SphereGeometry(1, 44, 30)
     const pos = g.attributes.position as THREE.BufferAttribute
     const cols = new Float32Array(pos.count * 3)
 
