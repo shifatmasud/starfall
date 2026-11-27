@@ -258,12 +258,22 @@ export function paintMaterial(mat: THREE.MeshStandardMaterial, opts: PaintOption
           // the lattice is turned about the vertical and read at two scales, so the stroke never
           // shows its cell boundaries as a grid on a grazing surface (a checkerboard is the one
           // artifact no amount of grading hides)
-          vec3 bwp2 = vPaintWorldPos * uPaintBrush * 2.2;
-          bwp2.xz = mat2(0.80, -0.60, 0.60, 0.80) * bwp2.xz;
-          float tri = pNoise(bwp2 + 3.0) * 0.66 + pNoise(bwp2 * 2.7 + 11.0) * 0.34;
+          // two octaves on two different bases (37° and 53°): neither lattice can align with the
+          // other, so the stroke never resolves into a grid on a grazing surface
+          vec3 b1 = vPaintWorldPos * uPaintBrush * 2.2;
+          b1.xz = mat2(0.80, -0.60, 0.60, 0.80) * b1.xz;
+          vec3 b2 = vPaintWorldPos * uPaintBrush * 5.9;
+          b2.xz = mat2(0.60, -0.80, 0.80, 0.60) * b2.xz;
+          float tri = pNoise(b1 + 3.0) * 0.62 + pNoise(b2 + 11.0) * 0.38;
           float macro = pNoise(vPaintWorldPos * uPaintBrush * 0.5 + 5.0);
           float v = (tri - 0.5) * 0.58 + (macro - 0.5) * 0.52;
-          diffuseColor.rgb *= clamp(1.0 + v * uPaintBrush, 0.55, 1.45);
+          float vv = clamp(v * uPaintBrush, -0.16, 0.16);
+          diffuseColor.rgb *= 1.0 + vv;
+          // the stroke carries a hue — warm ochre where the paint is lit, cool olive in the trough —
+          // which is what makes low-contrast brushwork read as paint instead of blur
+          vec3 warm = vec3(1.05, 1.01, 0.92);
+          vec3 cool = vec3(0.93, 0.99, 1.02);
+          diffuseColor.rgb *= mix(vec3(1.0), vv > 0.0 ? warm : cool, min(abs(vv) * 5.0, 0.9));
         }`,
       )
 
