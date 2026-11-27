@@ -20,19 +20,19 @@ import { LambisShell } from '../scans/models/LambisShell'
 export function Scene8Seabed() {
   return (
     <ScanScene
-      water={{ top: '#58c6e2', deep: '#0a3f5e', fog: 0.085 }}
-      sun={{ from: [-1.5, 10, -2], color: '#d8f4ff', intensity: 2.6 }}
-      fill={{ sky: '#8fdcf2', ground: '#4a3c24', intensity: 1.35 }}
+      water={{ top: '#6fd0e6', deep: '#12608a', fog: 0.072 }}
+      sun={{ from: [-1.5, 10, -2], color: '#e2f6ff', intensity: 2.7 }}
+      fill={{ sky: '#9fe4f6', ground: '#6a5636', intensity: 1.4 }}
       camera={{ position: [0, 0.55, 0], target: [0, 0.25, -2.4], fov: 50 }}
-      orb={{ position: [0, 0.22, -2.2], radius: 0.22 }}
-      look={{ light: [-0.2, 1], tint: '#fff4e6', rim: '#e6f6ff', haloColor: '#ffd9a0', halo: 0.7, bob: 0, bend: 2.0, gain: 1.4, core: [0.9, 0.6, 0.3] }}
-      rays={{ x: 0.46, y: 1.12, color: '#cfeeff', strength: 0.62, haze: 0.26 }}
+      orb={{ position: [0, 0.22, -2.2], radius: 0.17 }}
+      look={{ light: [-0.2, 1], tint: '#fff4e6', rim: '#e6f6ff', haloColor: '#ffd9a0', halo: 0.38, bob: 0, bend: 2.2, gain: 1.2, core: [0.45, 0.3, 0.14] }}
+      rays={{ x: 0.46, y: 1.12, color: '#cfeeff', strength: 0.8, haze: 0.2 }}
       glow={{ color: '#ffd9a0', intensity: 1.1, distance: 1.6 }}
       clear="#08324e"
       poster={{ portrait: '/poster/scene8-portrait.webp', landscape: '/poster/scene8-landscape.webp' }}
       bloom={0.65}
     >
-      <Fit size={14} position={[0, -0.6, -4]} rotation={[0, 0, 0]} tint="#fff0cc" emissive={['#7a5a34', 0.30]}>
+      <Fit size={16} position={[0, -0.55, -4]} rotation={[0, 0, 0]} strip="#e8d2ac" tint="#ffffff" emissive={['#8a6a3e', 0.16]} occlude={0.4}>
         <SandRocksSmall01 />
       </Fit>
       <Fit size={1.6} position={[-1.5, 0, -3.2]} rotation={[0, 0.7, 0]} tint="#9fb0a8">
@@ -41,13 +41,13 @@ export function Scene8Seabed() {
       <Fit size={1.4} position={[1.6, 0, -3.4]} rotation={[0, 2.4, 0]} tint="#a8b0a0">
         <CoastRocks05 />
       </Fit>
-      <Fit size={0.62} position={[-1.05, 0.05, -2.7]} rotation={[0, 0.4, 0]} tint="#e8c2cc" emissive={['#7a4050', 0.10]}>
+      <Fit size={0.7} position={[-1.05, -0.62, -2.7]} rotation={[0, 0.4, 0]} tint="#f0c8d2" emissive={['#7a4050', 0.08]}>
         <CoralAcropora />
       </Fit>
-      <Fit size={0.60} position={[0.95, 0.05, -2.55]} rotation={[0, 1.2, 0]} tint="#e8c0a0" emissive={['#8a5a38', 0.10]}>
+      <Fit size={0.66} position={[0.95, 0.05, -2.55]} rotation={[0, 1.2, 0]} tint="#f0c8a4" emissive={['#8a5a38', 0.08]}>
         <CoralPocillopora />
       </Fit>
-      <Fit size={0.6} position={[1.5, 0.1, -2.9]} rotation={[0, 0.2, 0]} tint="#c8bcd8" emissive={['#5a4a70', 0.08]}>
+      <Fit size={0.64} position={[1.5, 0.1, -2.9]} rotation={[0, 0.2, 0]} tint="#d6c8e8" emissive={['#5a4a70', 0.06]}>
         <CoralPorites />
       </Fit>
       <Fit size={0.45} position={[-0.55, 0, -1.9]} rotation={[0, 2.0, 0]} tint="#e0c8a8" emissive={['#6a5038', 0.08]}>

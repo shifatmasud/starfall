@@ -44,11 +44,12 @@ void main() {
   if (d > 1.0) discard;
   // a thin walled bubble: a bright shell, a milky body inside it (so the trail reads as foam, not as
   // drawn circles), and the two specular windows a real bubble has
-  float shell = smoothstep(0.52, 0.88, d) * (1.0 - smoothstep(0.88, 1.0, d));
-  float body = smoothstep(0.92, 0.0, d) * 0.18;
-  float hi = smoothstep(0.30, 0.0, length(vQ - vec2(-0.33, 0.36))) * 0.95;
-  float hi2 = smoothstep(0.16, 0.0, length(vQ - vec2(0.30, -0.34))) * 0.40;
-  vec3 col = uColor * (shell * 0.95 + body) + vec3(1.0) * (hi + hi2);
+  float shell = smoothstep(0.46, 0.84, d) * (1.0 - smoothstep(0.86, 1.0, d));
+  float body = smoothstep(0.98, 0.0, d) * 0.42;
+  float hi = smoothstep(0.30, 0.0, length(vQ - vec2(-0.33, 0.36))) * 0.8;
+  float hi2 = smoothstep(0.16, 0.0, length(vQ - vec2(0.30, -0.34))) * 0.35;
+  // a bubble's far wall: light bends through the whole body, so it is milky to the rim, not a ring
+  vec3 col = uColor * (shell * 0.55 + body) + vec3(1.0) * (hi + hi2);
   fragColor = vec4(col * vFade, 1.0);
 }
 `
@@ -75,8 +76,8 @@ export function Bubbles({ head, dir, len, spread, size, count = 190, color = '#d
     const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647)
     for (let i = 0; i < count; i++) {
       const big = rnd()
-      seeds[i * 4] = i / count + rnd() * 0.01
-      seeds[i * 4 + 1] = 0.30 + Math.pow(big, 2.2) * 1.5
+      seeds[i * 4] = i / count + (rnd() - 0.5) * 0.09
+      seeds[i * 4 + 1] = 0.22 + Math.pow(big, 1.8) * 1.9
       seeds[i * 4 + 2] = (rnd() * 2 - 1) * (0.4 + rnd() * 0.6)
       seeds[i * 4 + 3] = rnd()
     }

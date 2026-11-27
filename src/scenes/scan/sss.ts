@@ -12,6 +12,36 @@ import type { RGB } from '../../physics/optics'
  */
 export type SSS = { color: RGB; strength: number; power?: number; distortion?: number; /** sky light transmitted through thin edges, × strength */ ambient?: number }
 
+/**
+ * Sky occlusion for scanned solids (ice, rock): the sky light a crevice or an under-hang never sees.
+ * Multiplies the indirect (image-based) diffuse by a hemisphere term, so downward faces and the inside
+ * of a fracture fall into a cool shadow while the sunlit faces keep their full sky light — the internal
+ * shading the icebergs were missing when they blew out flat.
+ */
+export function applyOcclusion(mat: THREE.Material, strength = 1) {
+  const m = mat as THREE.MeshStandardMaterial
+  const prev = m.onBeforeCompile
+  const prevKey = m.customProgramCacheKey?.bind(m)
+  m.onBeforeCompile = (shader, renderer) => {
+    prev?.call(m, shader, renderer)
+    shader.uniforms.uOccStr = { value: strength }
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uOccStr;')
+      .replace(
+        '#include <lights_fragment_end>',
+        `#include <lights_fragment_end>
+{
+  // hemisphere occlusion: sky light reaches a face that looks up, not one that looks down into the body
+  float hemi = smoothstep(-0.55, 0.55, geometryNormal.y);
+  reflectedLight.indirectDiffuse *= mix(1.0, 0.32 + 0.68 * hemi, uOccStr);
+  reflectedLight.indirectSpecular *= mix(1.0, 0.45 + 0.55 * hemi, uOccStr);
+}`,
+      )
+  }
+  m.customProgramCacheKey = () => `${prevKey ? prevKey() : ''}|occ${strength}`
+  m.needsUpdate = true
+}
+
 export function applySSS(mat: THREE.Material, sss: SSS) {
   const m = mat as THREE.MeshStandardMaterial
   const key = `sss-${sss.color.join(',')}-${sss.strength}-${sss.power ?? 3}-${sss.distortion ?? 0.3}-${sss.ambient ?? 0}`

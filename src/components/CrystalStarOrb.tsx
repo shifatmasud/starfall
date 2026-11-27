@@ -98,15 +98,15 @@ void main() {
   // the glass body: the ball holds the light it scatters, so it is a luminous body with a clear form —
   // a shadowed cool side toward the planet, a sun-struck side toward the star — never a grey disc
   float sunLit = smoothstep(-0.55, 0.95, dot(N, L));
-  vec3 col = mix(vec3(0.10, 0.16, 0.32), vec3(1.0, 0.90, 0.74), sunLit * 0.55);
+  vec3 col = mix(vec3(0.16, 0.22, 0.40), vec3(1.0, 0.90, 0.74), sunLit * 0.55);
   // the world seen through the glass, gathering toward the silhouette
   col += inside * (0.55 + 0.85 * fres) * 1.90;
   // the star's light caught in the lower-right of the ball, the plate's warm gold
   col += vec3(1.0, 0.88, 0.66) * pow(max(dot(N, normalize(vec3(0.86, -0.10, 0.50))), 0.0), 2.4) * 0.85;
 
   // a whisper of the plate's warm strata, never a brown wash across the body
-  col += vec3(1.0, 0.90, 0.72) * strata * (0.03 + 0.10 * sunSide) * (0.35 + 0.65 * fres);
-  col += vec3(1.0, 0.92, 0.78) * swirl * (0.06 + 0.12 * sunSide);
+  col += vec3(1.0, 0.90, 0.72) * strata * (0.014 + 0.04 * sunSide) * (0.35 + 0.65 * fres);
+  col += vec3(1.0, 0.92, 0.78) * swirl * (0.024 + 0.05 * sunSide);
 
   // the specular window: a small, hard, white-hot highlight where the star's light is focused
   float coreD = clamp(dot(-N, normalize(vec3(0.55, 0.42, 0.72))), 0.0, 1.0);

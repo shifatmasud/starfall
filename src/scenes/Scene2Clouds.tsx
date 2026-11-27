@@ -60,9 +60,9 @@ function Scene({ layout }: { layout: Layout }) {
       {/* the glass meteor, low right of centre, its wake running up-left for a third of the frame */}
       <Orb
         orb={{ position: at(0.48, 0.46, -6, layout.aspect), radius: sizeAt(0.050, 0, -6, layout.aspect)[0] / 2 }}
-        streak={{ dir: [-0.42 * layout.aspect, 0.26], len: 0.85 * Math.hypot(0.42 * layout.aspect, 0.26), width: 0.028, color: '#fff3de', strength: 3.0 }}
-        look={{ light: [-0.25, 0.9], tint: '#fff6ea', rim: '#ffd9a8', haloColor: '#ffcf92', halo: 1.15, gain: 2.05, core: [0.85, 0.55, 0.22] }}
-        glow={{ color: '#ffdcb0', intensity: 7, distance: 14 }}
+        streak={{ dir: [-0.42 * layout.aspect, 0.26], len: 0.85 * Math.hypot(0.42 * layout.aspect, 0.26), width: 0.014, color: '#fff3de', strength: 1.1 }}
+        look={{ light: [-0.25, 0.9], tint: '#fff6ea', rim: '#ffd9a8', haloColor: '#ffcf92', halo: 0.6, gain: 1.5, core: [0.55, 0.34, 0.13] }}
+        glow={{ color: '#ffdcb0', intensity: 3.2, distance: 12 }}
       />
       <CloudSea layout={layout} layer="front" renderOrder={2} sss={0.07} reach={0.4} soft={0.5} />
 

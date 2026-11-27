@@ -53,23 +53,23 @@ type Band = {
 /** the plate's cloud sea, back to front */
 const BANDS: Band[] = [
   // the far line under the horizon, lit gold where the low sun lies on it
-  { key: 'far', layer: 'back', u0: -0.25, u1: 1.25, v0: 0.300, v1: 0.385, z: -40, billows: 15, body: 12, height: 0.9, puff: 0.34, low: '#a3a2c5', mid: '#f1e5dc', high: '#fff1dc', opacity: 0.70, seed: 11, fade: 4 },
-  { key: 'far-2', layer: 'back', u0: 0.30, u1: 1.25, v0: 0.345, v1: 0.450, z: -30, billows: 9, body: 14, height: 0.85, puff: 0.34, low: '#9a98ba', mid: '#e9e2e4', high: '#fff2e0', opacity: 0.80, seed: 19, fade: 4 },
+  { key: 'far', layer: 'back', u0: -0.25, u1: 1.25, v0: 0.300, v1: 0.385, z: -40, billows: 15, body: 12, height: 0.9, puff: 0.34, low: '#5a6d93', mid: '#f1e5dc', high: '#fff7e6', opacity: 0.70, seed: 11, fade: 4 },
+  { key: 'far-2', layer: 'back', u0: 0.30, u1: 1.25, v0: 0.345, v1: 0.450, z: -30, billows: 9, body: 14, height: 0.85, puff: 0.34, low: '#52658b', mid: '#f4e9d8', high: '#fff2e0', opacity: 0.80, seed: 19, fade: 4 },
 
   // the towering bank on the left, near enough that it rises over the horizon into the sky: sunlit cream, as on panel 2
-  { key: 'tower', layer: 'back', u0: -0.30, u1: 0.24, v0: -0.200, v1: 0.540, z: -16, billows: 5, body: 20, height: 1.0, puff: 0.42, low: '#c4c0d6', mid: '#f7f1ec', high: '#fffaf0', opacity: 0.93, seed: 29, fade: 4 },
-  { key: 'wisp', layer: 'back', u0: 0.12, u1: 0.42, v0: 0.010, v1: 0.130, z: -26, billows: 3, body: 10, height: 0.8, puff: 0.32, low: '#b3abbe', mid: '#f0e8e4', high: '#fff3e6', opacity: 0.32, seed: 31, fade: 4 },
+  { key: 'tower', layer: 'back', u0: -0.30, u1: 0.24, v0: -0.200, v1: 0.540, z: -16, billows: 5, body: 20, height: 1.0, puff: 0.42, low: '#6b7d9c', mid: '#faf1e0', high: '#fffaee', opacity: 0.93, seed: 29, fade: 4 },
+  { key: 'wisp', layer: 'back', u0: 0.12, u1: 0.42, v0: 0.010, v1: 0.130, z: -26, billows: 3, body: 10, height: 0.8, puff: 0.32, low: '#586a89', mid: '#f7eddb', high: '#fff6e8', opacity: 0.32, seed: 31, fade: 4 },
 
   // the middle distance, where the sun pours in
-  { key: 'mid-1', layer: 'back', u0: 0.05, u1: 0.62, v0: 0.330, v1: 0.500, z: -22, billows: 6, body: 16, height: 0.78, puff: 0.34, low: '#9c9fc4', mid: '#f1ece8', high: '#fff8ee', opacity: 0.86, seed: 37, fade: 4 },
-  { key: 'mid-2', layer: 'back', u0: 0.55, u1: 1.25, v0: 0.400, v1: 0.560, z: -19, billows: 6, body: 16, height: 0.78, puff: 0.34, low: '#9396c0', mid: '#eceef4', high: '#fffaf2', opacity: 0.88, seed: 41, fade: 4 },
+  { key: 'mid-1', layer: 'back', u0: 0.05, u1: 0.62, v0: 0.330, v1: 0.500, z: -22, billows: 6, body: 16, height: 0.78, puff: 0.34, low: '#53668d', mid: '#f7eddb', high: '#fff8e9', opacity: 0.86, seed: 37, fade: 4 },
+  { key: 'mid-2', layer: 'back', u0: 0.55, u1: 1.25, v0: 0.400, v1: 0.560, z: -19, billows: 6, body: 16, height: 0.78, puff: 0.34, low: '#4d6087', mid: '#f3eadc', high: '#fffaf0', opacity: 0.88, seed: 41, fade: 4 },
   { key: 'mid-3', layer: 'back', u0: -0.15, u1: 0.70, v0: 0.480, v1: 0.700, z: -13, billows: 6, body: 18, height: 0.80, puff: 0.36, low: '#525a8a', mid: '#8a96b8', high: '#cfd1df', opacity: 0.92, seed: 53, fade: 4 },
 
   // the shadowed trough under the orb and the bright banks that close the bottom corners
   { key: 'near-1', layer: 'front', u0: -0.30, u1: 0.55, v0: 0.640, v1: 0.860, z: -5.2, billows: 5, body: 22, height: 0.82, puff: 0.36, low: '#4c5482', mid: '#8490b4', high: '#cdd0de', opacity: 0.93, seed: 67, fade: 4 },
-  { key: 'near-2', layer: 'front', u0: 0.66, u1: 1.30, v0: 0.560, v1: 0.800, z: -5.0, billows: 4, body: 22, height: 0.86, puff: 0.38, low: '#9a9ac0', mid: '#f0eef0', high: '#fffaf2', opacity: 0.94, seed: 71, fade: 4 },
-  { key: 'front-1', layer: 'front', u0: -0.40, u1: 0.28, v0: 0.800, v1: 1.150, z: -3.6, billows: 3, body: 26, height: 0.90, puff: 0.40, low: '#a19fc2', mid: '#f6f0ea', high: '#fffaf2', opacity: 0.96, seed: 83, fade: 3 },
-  { key: 'front-2', layer: 'front', u0: 0.62, u1: 1.40, v0: 0.740, v1: 1.150, z: -3.4, billows: 3, body: 26, height: 0.92, puff: 0.40, low: '#a19fc2', mid: '#f6f0ea', high: '#fffaf2', opacity: 0.96, seed: 97, fade: 3 },
+  { key: 'near-2', layer: 'front', u0: 0.66, u1: 1.30, v0: 0.560, v1: 0.800, z: -5.0, billows: 4, body: 22, height: 0.86, puff: 0.38, low: '#55668b', mid: '#f7eddd', high: '#fffaf0', opacity: 0.94, seed: 71, fade: 4 },
+  { key: 'front-1', layer: 'front', u0: -0.40, u1: 0.28, v0: 0.800, v1: 1.150, z: -3.6, billows: 3, body: 26, height: 0.90, puff: 0.40, low: '#586a8f', mid: '#f9efde', high: '#fffaf0', opacity: 0.96, seed: 83, fade: 3 },
+  { key: 'front-2', layer: 'front', u0: 0.62, u1: 1.40, v0: 0.740, v1: 1.150, z: -3.4, billows: 3, body: 26, height: 0.92, puff: 0.40, low: '#586a8f', mid: '#f9efde', high: '#fffaf0', opacity: 0.96, seed: 97, fade: 3 },
   { key: 'front-3', layer: 'front', u0: 0.18, u1: 0.78, v0: 0.860, v1: 1.200, z: -3.0, billows: 3, body: 24, height: 0.92, puff: 0.40, low: '#4a5180', mid: '#8590b0', high: '#cacbd9', opacity: 0.95, seed: 101, fade: 3 },
 ]
 

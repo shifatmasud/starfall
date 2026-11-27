@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import * as THREE from 'three'
-import { applySSS, type SSS } from './sss'
+import { applyOcclusion, applySSS, type SSS } from './sss'
 
 /**
  * Places a scan by real size: scales its children so the largest side of their bounding box is
@@ -16,6 +16,9 @@ export function Fit({
   emissive,
   roughness,
   sss,
+  /** hemisphere sky occlusion, 0..1 (solid bodies: crevices and under-hangs fall into shade) */
+  occlude,
+  strip,
   stretch = 1,
   flat,
   children,
@@ -28,6 +31,10 @@ export function Fit({
   roughness?: number
   /** translucency (leaves, ice): see sss.ts */
   sss?: SSS
+  /** sky occlusion strength for solid bodies (ice, rock) */
+  occlude?: number
+  /** drop the scan's diffuse map and replace it with this flat colour (ice cut from a rock's massing) */
+  strip?: string
   /** extra vertical stretch after fitting (a slab of rock stood up into a berg) */
   stretch?: number
   /** flat shading: the faceted look of cut ice */
@@ -48,11 +55,16 @@ export function Fit({
     const c = box.getCenter(new THREE.Vector3())
     g.scale.set(s, s * stretch, s)
     g.position.set(-c.x * s, -box.min.y * s * stretch, -c.z * s)
-    if (tint || emissive || roughness !== undefined || sss || flat) {
+    if (tint || emissive || roughness !== undefined || sss || flat || occlude || strip) {
       g.traverse((o) => {
         const m = o as THREE.Mesh
         if (!m.isMesh) return
         const mat = (m.material as THREE.MeshStandardMaterial).clone()
+        if (strip) {
+          mat.map = null
+          mat.color = new THREE.Color(strip)
+          mat.needsUpdate = true
+        }
         if (tint) mat.color.multiply(new THREE.Color(tint))
         if (emissive) {
           mat.emissive = new THREE.Color(emissive[0])
@@ -60,6 +72,7 @@ export function Fit({
         }
         if (roughness !== undefined) mat.roughness = roughness
         if (sss) applySSS(mat, sss)
+        if (occlude) applyOcclusion(mat, occlude)
         if (flat) {
           mat.flatShading = true
           mat.needsUpdate = true

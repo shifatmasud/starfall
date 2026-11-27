@@ -3,6 +3,8 @@ import { Fit } from './scan/Fit'
 import { CoralAcropora } from '../scans/models/CoralAcropora'
 import { CoralPocillopora } from '../scans/models/CoralPocillopora'
 import { CoastRocks05 } from '../scans/models/CoastRocks05'
+import { FishSchool } from './scan/Fish'
+import { SeaFloor } from './scan/SeaFloor'
 
 /**
  * Scene 7 — Underwater descent. The orb plunges through open water trailing bubbles, light shafts
@@ -20,23 +22,25 @@ export function Scene7Descent() {
       fill={{ sky: '#a8e4ff', ground: '#0a3350', intensity: 1.25 }}
       camera={{ position: [0, 0, 0], target: [-0.2, -0.3, -4], fov: 55 }}
       orb={{ position: [1.1, -1.1, -3.4], radius: 0.24 }}
-      look={{ light: [-0.2, 1], tint: '#e8f8ff', rim: '#dff4ff', haloColor: '#9fe0ff', halo: 0.6, bend: 2.0, gain: 1.5, core: [0.15, 0.3, 0.4] }}
+      look={{ light: [-0.2, 1], tint: '#dff2ff', rim: '#dff4ff', haloColor: '#9fe0ff', halo: 0.42, bend: 2.2, gain: 1.25, core: [0.06, 0.14, 0.2] }}
       bubbles={{ dir: [-0.78, 0.63], len: 0.95, spread: 0.15, size: 0.017, count: 170 }}
-      rays={{ x: 0.42, y: 1.12, color: '#d8f8ff', strength: 0.75, haze: 0.22 }}
+      rays={{ x: 0.42, y: 1.12, color: '#d8f8ff', strength: 0.85, haze: 0.2 }}
       glow={{ color: '#9fe0ff', intensity: 1.2, distance: 3 }}
       clear="#0b5a9a"
       poster={{ portrait: '/poster/scene7-portrait.webp', landscape: '/poster/scene7-landscape.webp' }}
       bloom={0.6}
     >
-      <Fit size={5.0} position={[-3.2, -3.4, -7]} rotation={[0, 0.5, 0]} tint="#a8c6d2">
+      <SeaFloor y={-3.6} color="#3f5f66" size={2000} />
+      <Fit size={5.0} position={[-3.2, -3.55, -7]} rotation={[0, 0.5, 0]} tint="#b6d0da">
         <CoastRocks05 />
       </Fit>
-      <Fit size={2.0} position={[-4.2, -2.4, -6.0]} tint="#c8a0a8" emissive={['#7a4a58', 0.25]}>
+      <Fit size={2.0} position={[-4.2, -2.55, -6.0]} tint="#d8b0b8" emissive={['#7a4a58', 0.12]}>
         <CoralAcropora />
       </Fit>
-      <Fit size={1.6} position={[1.8, -3.5, -5.8]} tint="#d0a888" emissive={['#8a5a40', 0.25]}>
+      <Fit size={1.6} position={[1.8, -3.6, -5.8]} tint="#e0b898" emissive={['#8a5a40', 0.12]}>
         <CoralPocillopora />
       </Fit>
+      <FishSchool center={[-0.6, -1.1, -6.4]} spread={[3.6, 1.2, 2.4]} count={30} size={0.16} color="#0e3348" seed={5} />
     </ScanScene>
   )
 }

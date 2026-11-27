@@ -24,8 +24,9 @@ const BERGS: [number, number, number, number][] = [
   [3.5, -2.8, 0.35, 2.6], [5.0, -4.5, 0.4, 0.4], [-6.2, -3.6, 0.45, 1.3], [10.0, -15.0, 0.9, 0.6]
 ]
 
-// ice SSS: Beer–Lambert through ~1.5 m of ice with Warren & Brandt (2008) absorption: red is absorbed first, light leaves blue
-const ICE = { color: A_ICE.map((a) => Math.exp(-a * 1.5 * 8)) as [number, number, number], strength: 1.6, power: 2, ambient: 2.2 }
+// ice SSS: Beer–Lambert through ~1.5 m of ice with Warren & Brandt (2008) absorption: red is absorbed first, light leaves blue.
+// Kept low: a berg is opaque dense ice lit by the sun, not a lamp — the blue belongs in the shadowed faces and thin skirts.
+const ICE = { color: A_ICE.map((a) => Math.exp(-a * 1.5 * 8)) as [number, number, number], strength: 0.55, power: 3, ambient: 0.1 }
 
 // the far ice front: real relief of the Saint Elias range over Disenchantment Bay, clad white
 const ICEFRONT = { lit: '#f6f9ff', shade: '#9db5d8', snowLit: '#ffffff', snowShade: '#b4c8e6', snowLine: 0.15, air: '#d4e4f4' }
@@ -36,21 +37,21 @@ export function Scene6Ice() {
       hdri={SHARED_SKY}
       bgIntensity={1.0}
       envIntensity={1.3}
-      sun={{ from: [2, 9, 4], color: '#f4f8ff', intensity: 2.2 }}
-      fill={{ sky: '#d8ecff', ground: '#2a5a7a', intensity: 0.7 }}
+      sun={{ from: [2, 9, 4], color: '#fff6ec', intensity: 2.9 }}
+      fill={{ sky: '#cfe6ff', ground: '#2a5a7a', intensity: 0.45 }}
       camera={{ position: [0, 2.4, 0], target: [0, 0.4, -6], fov: 55 }}
       orb={{ position: [0.55, 1.35, -4.2], radius: 0.18 }}
       look={{ light: [0.5, 0.75], tint: '#eef8ff', rim: '#eaf6ff', haloColor: '#cfe9ff', halo: 0.45, bend: 2.0, gain: 1.45 }}
-      streak={{ dir: [-1, -0.25], len: 0.9, width: 0.045, color: '#bfe2ff', strength: 1.0 }}
+      streak={{ dir: [-1, -0.25], len: 0.9, width: 0.016, color: '#bfe2ff', strength: 0.9 }}
       clear="#7fa8c8"
       poster={{ portrait: '/poster/scene6-portrait.webp', landscape: '/poster/scene6-landscape.webp' }}
       bloom={0.55}
-      exposure={1.15}
-      haze={0.35}
-      soften={{ amount: 0.25, radius: 3, mist: 0.12 }}
+      exposure={1.02}
+      haze={0.12}
+      soften={{ amount: 0.16, radius: 3, mist: 0.03 }}
     >
-      <WaterPlane near={0} y={0.0} wind={3.0} fetch={30000} chl={0.08} metersPerUnit={2.5} sunFrom={[9, 2.4, -8]} sunColor="#fff6e6" lift={1.85} sparkle={1.3} skyBright={1.05} reflGain={1.45} />
-      <Terrain dem="/tex/dem/icefront-h.webp" size={[190, 60]} relief={26} floor={0.04} position={[0, 0, -112]} sun={[0.4, 0.3, -0.85]} haze={0.35} palette={ICEFRONT} />
+      <WaterPlane near={0} y={0.0} spectrum="sea" peakWave={2.9} hs={0.16} bearing={250} detail={0.06} steep={0.75} flat={0.01} spread={1.7} bands={14} wind={3.0} fetch={30000} chl={0.9} metersPerUnit={2.5} sunFrom={[9, 2.4, -8]} sunColor="#fff6e6" lift={2.7} tint={[0.62, 1.06, 1.12]} sparkle={1.7} skyBright={1.15} reflGain={1.35} />
+      <Terrain dem="/tex/dem/icefront-h.webp" size={[190, 60]} relief={26} floor={0.04} position={[0, 0, -112]} sun={[0.4, 0.3, -0.85]} haze={0.12} palette={ICEFRONT} />
       {BERGS.map(([x, z, s, r], i) => (
         // cut ice, not a boulder: the scan's mass stood up, faceted flat, and floated low in the water
         <Fit
@@ -58,10 +59,12 @@ export function Scene6Ice() {
           size={s}
           position={[x, -0.16 * s, z]}
           rotation={[0, r, 0]}
-          tint="#f4faff"
-          emissive={['#cfe8ff', 0.42]}
-          roughness={0.34}
+          strip="#eaf4ff"
+          tint="#ffffff"
+          emissive={['#bfe0ff', 0.03]}
+          roughness={0.52}
           sss={ICE}
+          occlude={0.85}
           stretch={1.25 + 0.5 * (i % 3)}
           flat
         >

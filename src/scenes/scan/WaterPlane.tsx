@@ -1,13 +1,19 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { A_WATER, F0_WATER, IOR_WATER, JERLOV, coxMunkMss, kd, rrs, waterIOPs, waveSet } from '../../physics/optics'
+import { A_WATER, F0_WATER, IOR_WATER, JERLOV, coxMunkMss, kd, rrs, waterIOPs } from '../../physics/optics'
+import { SPECTRA, waveField } from '../../physics/waveSpectra'
 
 /**
  * Physically-based open water (replaces the old metal-like mirror).
  *
- *  waves        32 plane waves sampled from a JONSWAP spectrum (Hasselmann 1973) for a real wind speed U
- *               and fetch, ω² = g·k dispersion; normals are analytic and band-limited by pixel footprint
+ *  waves        32 Gerstner components built from a MEASURED buoy spectrum (physics/waveSpectra.ts):
+ *               real NDBC band frequencies, band energies and per-band mean directions, split across
+ *               the band's own Mitsuyasu spreading, transposed to the scene's ripple scale by one
+ *               frequency factor and set to the scene's significant wave height. Domain-warped, with
+ *               two octaves of capillary noise gradient standing in for the sub-pixel spectral tail,
+ *               so the surface has no repeating stripe or grid; ω² = g·k dispersion, band-limited by
+ *               pixel footprint
  *  reflection   exact unpolarised Fresnel for n = 1.333 (physics/optics.ts), mirroring the photographed
  *               sky (the scene HDRI); sun glint from a Blinn lobe whose width is the Cox–Munk (1954) slope variance
  *  body colour  Gordon et al. (1975) irradiance reflectance R = 0.33·bb/(a+bb) from Pope & Fry (1997) pure-water
@@ -50,6 +56,30 @@ export type WaterProps = {
   shore?: number
   /** sun-glitter strength (stochastic Cox–Munk facets) */
   sparkle?: number
+  /** which measured NDBC spectrum drives the waves (see physics/waveSpectra.ts) */
+  spectrum?: keyof typeof SPECTRA
+  /** peak wavelength of the transposed spectrum, m — the scene's ripple scale */
+  peakWave?: number
+  /** significant wave height in the scene, m */
+  hs?: number
+  /** scene bearing the measured mean direction is turned to, degrees */
+  bearing?: number
+  /** capillary detail (gradient noise) strength */
+  detail?: number
+  /** how far each measured band is spread across its Mitsuyasu width (1 = the model's own) */
+  spread?: number
+  /** how many measured bands carry the energy (default 10) */
+  bands?: number
+  /** Gerstner steepness, 0 = pure sine swell, 1 = sharp crests */
+  steep?: number
+  /** how fast the normals flatten with distance (per scene unit) */
+  flat?: number
+  /** width of a pool as a fraction of its depth-ellipse (x scale; 1 = round) */
+  poolStretch?: number
+  /** fade the surface to transparent where it runs shallow (a natural shoreline instead of a cut edge) */
+  feather?: number
+  /** the water's own body tint (a lagoon's teal, an arctic sea's cerulean), multiplied into what is under the surface */
+  tint?: [number, number, number]
   /** blend of the reflected sky toward a clear-sky gradient (0 keeps the photographed horizon) */
   skyBright?: number
   /** brightness of the reflected sky, painterly */
@@ -72,11 +102,11 @@ layout(location=0) out vec4 outColor;
 uniform sampler2D uEnv; uniform mat3 uEnvRot; uniform float uHasEnv; uniform vec3 uFallback;
 uniform vec4 uWaves[${N_WAVES}];   // k, omega, amplitude, phase
 uniform vec2 uDirs[${N_WAVES}];
-uniform float uTime, uMpu, uMss, uLift, uDepth, uPool, uPoolR, uF0, uIor, uAmpSum;
+uniform float uTime, uMpu, uMss, uLift, uDepth, uPool, uPoolR, uF0, uIor, uAmpSum, uQ, uDetail, uFlat, uPoolStretch, uFeather;
 uniform vec2 uPoolC;
 uniform sampler2D uRefl, uRefr; uniform mat4 uReflVP, uMainVP; uniform float uUseRefl, uUseRefr, uShore, uNear, uSparkle, uSkyBright, uReflGain, uRefrDepth;
 uniform vec2 uAt; uniform float uEncode;
-uniform vec3 uA, uBb, uB, uRinf, uKd, uBottom, uSunDir, uSunCol, uAWater;
+uniform vec3 uA, uBb, uB, uRinf, uKd, uBottom, uSunDir, uSunCol, uAWater, uTint;
 const float PI = 3.14159265;
 // colour pipeline: everything below is computed in LINEAR light. The HDRI is an sRGB texture (decoded by the
 // sampler), the reflection/refraction targets are linear data buffers, the sun colour arrives linear (THREE.Color),
@@ -98,6 +128,16 @@ float fresnel(float c, float n){           // exact unpolarised Fresnel, air -> 
   return 0.5 * (rs*rs + rp*rp);
 }
 vec2 hash22(vec2 p){ vec3 q = fract(vec3(p.xyx) * vec3(.1031,.1030,.0973)); q += dot(q, q.yzx + 33.33); return fract((q.xx + q.yz) * q.zy); }
+float h21(vec2 p){ vec3 q = fract(vec3(p.xyx) * vec3(.1031,.1030,.0973)); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+// value noise with its analytic gradient: (value, d/dx, d/dy) — the capillary detail of the surface
+vec3 vnd(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f*f*(3.0-2.0*f), du = 6.0*f*(1.0-f);
+  float a = h21(i), b = h21(i+vec2(1,0)), c = h21(i+vec2(0,1)), d = h21(i+vec2(1,1));
+  float k1 = b-a, k2 = c-a, k4 = a-b-c+d;
+  float v = a + k1*u.x + k2*u.y + k4*u.x*u.y;
+  return vec3(v, vec2(k1 + k4*u.y, k2 + k4*u.x) * du);
+}
 float hg(float c, float g){ return (1.0 - g*g) / (4.0*PI*pow(1.0 + g*g - 2.0*g*c, 1.5)); }
 void main(){
   vec3 toCam = cameraPosition - vW;
@@ -105,28 +145,39 @@ void main(){
   vec3 V = toCam / dist;
   vec2 p = vW.xz * uMpu;
   float pix = dist * uMpu * 0.0035;                    // metres per pixel at this distance
-  float h = 0.0; vec2 g = vec2(0.0); float lap = 0.0;
+  // domain warp: a slow, drifting distortion of the sampling point, so the measured phases never line
+  // up into a corrugation however the components happen to fall
+  vec3 wq = vnd(p * 0.13 + vec2(uTime * 0.012, 0.0));
+  vec3 wr = vnd(p * 0.13 + vec2(5.2, uTime * 0.010) + wq.yz * 0.12);
+  vec2 pw = p + wr.yz * 0.9;
+  float h = 0.0; vec2 grad = vec2(0.0); float vert = 0.0; float lap = 0.0;
   for (int i = 0; i < ${N_WAVES}; i++){
     vec4 w = uWaves[i];
-    float fade = 1.0 - smoothstep(0.35, 1.1, w.x * pix);  // wavelength under ~6 px averages away
-    float ph = w.x * dot(uDirs[i], p) - w.y * uTime + w.w;
+    if (w.z <= 0.0) continue;
+    float fade = 1.0 - smoothstep(0.6, 2.0, w.x * pix);  // wavelength under ~3 px averages away
+    float ph = w.x * dot(uDirs[i], pw) - w.y * uTime + w.w;
     float s = sin(ph), c = cos(ph);
-    h += w.z * c * fade;
-    g += -w.z * w.x * s * uDirs[i] * fade;
-    lap += -w.z * w.x * w.x * c * fade;
+    h += w.z * s * fade;
+    grad += w.z * w.x * c * fade * uDirs[i];           // ∂h/∂x, ∂h/∂z
+    vert += w.z * w.x * s * fade;                      // Σ a·k·sin φ : the Gerstner crest compression
+    lap += w.z * w.x * w.x * s * fade;                 // ∇²h, for the caustics
   }
-  vec3 N = normalize(vec3(-g.x, 1.0, -g.y));
-  N = normalize(mix(N, vec3(0.,1.,0.), clamp(dist * 0.012, 0.0, 0.85)));
+  // capillary detail: two octaves of the noise gradient, the sub-grid tail of the measured spectrum
+  vec3 d1 = vnd(pw * 2.3 + vec2(uTime * 0.05, -uTime * 0.04));
+  vec3 d2 = vnd(pw * 7.1 - vec2(uTime * 0.12, uTime * 0.08));
+  grad += (vec2(d1.y, d1.z) * 0.75 + vec2(d2.y, d2.z) * 0.45) * uDetail;
+  vec3 N = normalize(vec3(-grad.x, 1.0 - uQ * vert, -grad.y));
+  N = normalize(mix(N, vec3(0.,1.,0.), clamp(dist * uFlat, 0.0, 0.85)));
   float cv = clamp(dot(N, V), 0.02, 1.0);
   float F = fresnel(cv, uIor);
   // reflection of the photographed sky
-  vec3 R = reflect(-V, N); R.y = abs(R.y);
+  vec3 R = reflect(-V, N); R.y = max(abs(R.y), 0.2);   // the sampled sky stays above the horizon haze band
   // the water also mirrors the bright horizon band through the finer ripples the footprint averages away
   vec3 Rh = normalize(vec3(R.x, 0.12 + 0.25 * R.y, R.z));
   vec3 refl = mix(sky(R, 1.0), sky(Rh, 2.0), 0.65);
   // clear-sky gradient (Rayleigh-blue zenith, pale horizon): lifts a dark photographed horizon band
   vec3 clearSky = srgbToLinear(mix(vec3(0.62,0.78,1.0), vec3(0.28,0.56,0.9), pow(clamp(R.y,0.,1.), 0.5))) * uReflGain;
-  refl = mix(refl, max(refl, clearSky * 0.75), uSkyBright) * uReflGain;
+  refl = mix(refl, clearSky, uSkyBright) * uReflGain;
   vec4 clipM = uMainVP * vec4(vW, 1.0);
   vec2 suv = clipM.xy / clipM.w * 0.5 + 0.5;
   if (uUseRefl > 0.5){
@@ -135,7 +186,7 @@ void main(){
     vec2 ruv = rc.xy / rc.w * 0.5 + 0.5 + N.xz * 0.06 / (1.0 + dist * 0.15);
     float inb = step(0.0, ruv.x) * step(ruv.x, 1.0) * step(0.0, ruv.y) * step(ruv.y, 1.0) * step(0.0, rc.w);
     vec4 rr = textureLod(uRefl, clamp(ruv, 0.001, 0.999), 1.0 + clamp(dist * 0.12, 0.0, 3.0));
-    refl = mix(refl, rr.rgb, clamp(rr.a * 1.25, 0.0, 1.0) * inb);
+    refl = mix(refl, rr.rgb * uReflGain, clamp(rr.a * 1.25, 0.0, 1.0) * inb);
   }
   // sun glint: Blinn lobe with Cox–Munk slope variance
   vec3 Hh = normalize(uSunDir + V);
@@ -147,8 +198,10 @@ void main(){
   vec3 Ed = skyAvg + uSunCol * 3.2 * cs;            // direct:diffuse of a clear sky (Gregg & Carder 1990 ~ 3-5)
   float depth = uDepth;
   if (uPool > 0.5){
-    float r = length((vW.xz - uPoolC) / vec2(1.6, 1.0)) / uPoolR;
-    depth = max(uDepth * (1.0 - r*r), 0.04);
+    float r = length((vW.xz - uPoolC) / vec2(uPoolStretch, 1.0)) / uPoolR;
+    depth = max(uDepth * (1.0 - r*r), 0.02);
+    // the bowl the water sits in: the surface dissolves over the shallow sand at the shore
+    depth = max(depth, 0.0);
   }
   if (uShore > 0.0){
     float rr0 = length(vW.xz - uAt);
@@ -168,7 +221,7 @@ void main(){
   vec3 sss = uSunCol * ph * (1.0 - exp(-uB * thick * 1.5)) * T * crest * crest * (1.0 - F) * 3.0;
   // pure-water turquoise transmittance of the crest (Pope & Fry) lifts the body on the lit side
   sss += uSunCol * exp(-uAWater * thick * 3.0) * 0.12 * crest * crest * max(dot(N, uSunDir), 0.0) * (1.0 - F);
-  vec3 under = body + sss;
+  vec3 under = (body + sss) * uTint;
   if (uUseRefr > 0.5){
     vec2 quv = clamp(suv + N.xz * 0.045, 0.002, 0.998);       // Snell: the ray bends toward the normal, shifting the submerged image
     vec4 rf = texture(uRefr, quv);
@@ -193,7 +246,10 @@ void main(){
     glit *= F * 14.0 * uSparkle * smoothstep(0.0, 0.15, uSunDir.y);
   }
   vec3 col = F * refl + (1.0 - F) * under + uSunCol * (glint * 4.0 + glit);
-  outColor = vec4(uEncode > 0.5 ? linearToSrgb(col) : col, 1.0);   // sRGB in the frame (the post chain reads it as display values), linear in the data targets
+  // the body's own tint carries into the reflection, so a lagoon stays teal and an arctic sea cerulean at any angle
+  col = mix(col, col * uTint, 0.45);
+  float alpha = mix(1.0, smoothstep(0.0, 0.45, depth), uFeather);
+  outColor = vec4(uEncode > 0.5 ? linearToSrgb(col) : col, alpha);   // sRGB in the frame (the post chain reads it as display values), linear in the data targets
 }`
 
 export function WaterPlane({
@@ -211,6 +267,18 @@ export function WaterPlane({
   at = [0, 0],
   y = 0.01,
   windDeg = 25,
+  spectrum = 'lake',
+  peakWave = 1.4,
+  hs = 0.05,
+  bearing = 210,
+  detail = 0.05,
+  spread = 1,
+  bands = 10,
+  steep = 0.7,
+  flat = 0.012,
+  poolStretch = 1.6,
+  feather = 0,
+  tint = [1, 1, 1],
   reflect = true,
   refract = true,
   shore = 0,
@@ -227,12 +295,17 @@ export function WaterPlane({
     return g
   }, [near, far, pool])
   const mat = useMemo(() => {
-    const waves = waveSet(wind, fetch, N_WAVES, windDeg)
+    const measured = waveField(SPECTRA[spectrum], { peakWave, hs, bearing, bands, seed: 3, spread })
+    // the shader declares a fixed array size, so the field is padded with zero-amplitude entries
+    const waves = measured.slice()
+    while (waves.length < N_WAVES) waves.push({ k: 1, w: 1, a: 0, dx: 1, dz: 0, ph: 0 })
     const iop = waterIOPs(chl)
     const sd = new THREE.Vector3(...sunFrom).normalize()
     const v3 = (a: number[]) => new THREE.Vector3(a[0], a[1], a[2])
     const col = new THREE.Color(sunColor)
     return new THREE.ShaderMaterial({
+      transparent: feather > 0,
+      depthWrite: true,
       glslVersion: THREE.GLSL3,
       vertexShader: VERT,
       fragmentShader: FRAG,
@@ -241,7 +314,9 @@ export function WaterPlane({
         uWaves: { value: waves.map((w) => new THREE.Vector4(w.k, w.w, w.a, w.ph)) },
         uDirs: { value: waves.map((w) => new THREE.Vector2(w.dx, w.dz)) },
         uTime: { value: 0 }, uMpu: { value: metersPerUnit }, uMss: { value: coxMunkMss(wind) }, uLift: { value: lift },
+        uQ: { value: steep }, uDetail: { value: detail }, uFlat: { value: flat },
         uDepth: { value: depth }, uPool: { value: pool ? 1 : 0 }, uPoolR: { value: far }, uPoolC: { value: new THREE.Vector2(at[0], at[1]) },
+        uPoolStretch: { value: poolStretch }, uFeather: { value: feather }, uTint: { value: new THREE.Vector3(...tint) },
         uF0: { value: F0_WATER }, uIor: { value: IOR_WATER },
         uAmpSum: { value: Math.sqrt(waves.reduce((s, w) => s + 0.5 * w.a * w.a, 0)) * 2 },
         uA: { value: v3(iop.a) }, uB: { value: v3(iop.b) }, uBb: { value: v3(iop.bb) }, uRinf: { value: v3(rrs(chl)) }, uKd: { value: v3(kd(chl)) },
@@ -252,7 +327,7 @@ export function WaterPlane({
         uEncode: { value: 1 }, uSparkle: { value: sparkle }, uSkyBright: { value: skyBright }, uReflGain: { value: reflGain }, uRefrDepth: { value: 0.5 },
       },
     })
-  }, [wind, fetch, chl, metersPerUnit, depth, bottom, sunFrom, sunColor, lift, pool, far, at, windDeg, shore, near, sparkle, skyBright, reflGain])
+  }, [wind, fetch, chl, metersPerUnit, depth, bottom, sunFrom, sunColor, lift, pool, far, at, windDeg, shore, near, sparkle, skyBright, reflGain, spectrum, peakWave, hs, bearing, detail, spread, bands, steep, flat, poolStretch, feather, tint[0], tint[1], tint[2]])
   // planar reflection + refraction targets (scans only: the photographed sky is mirrored analytically in the shader)
   const rt = useMemo(() => {
     const mk = () => {
@@ -273,13 +348,16 @@ export function WaterPlane({
     rt.n++
     if (key !== rt.key) { rt.key = key; rt.refl.setSize(w, h); rt.refr.setSize(w, h); rt.n = 0 }
     else if (rt.n > 12 && rt.n % 20 !== 0) return
+    // Everything the mirror should see stays: the ground and the far range (vertex-coloured MeshBasicMaterial),
+    // the sky dome, the scanned props. Hidden are only the water itself and the screen-space effects (the
+    // additive ribbons and the glass orb draw in screen uv, so in a mirrored camera they would land wrong).
     const hidden: THREE.Object3D[] = []
     st.scene.traverse((o) => {
-      const m = o as THREE.Mesh
-      if (!(m.isMesh || (o as THREE.Points).isPoints || (o as THREE.Line).isLine) || !o.visible) return
-      const mm = m.material as THREE.Material | THREE.Material[]
-      const ok = !Array.isArray(mm) && (mm as THREE.MeshStandardMaterial).isMeshStandardMaterial
-      if (!ok) { o.visible = false; hidden.push(o) }
+      if (!o.visible) return
+      const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined
+      if (!mm) return
+      const screenFx = !Array.isArray(mm) && mm.depthTest === false
+      if (o === meshRef.current || screenFx) { o.visible = false; hidden.push(o) }
     })
     const bg = st.scene.background, prev = gl.getRenderTarget(), prevPlanes = gl.clippingPlanes
     gl.getClearColor(rt.clearC); const prevA = gl.getClearAlpha()
@@ -326,5 +404,5 @@ export function WaterPlane({
       u.uFallback.value.setScalar(k)
     }
   })
-  return <mesh ref={meshRef} geometry={geo} material={mat} position={[at[0], y, at[1]]} scale={pool ? [1.6, 1, 1] : [1, 1, 1]} renderOrder={-40} frustumCulled={false} />
+  return <mesh ref={meshRef} geometry={geo} material={mat} position={[at[0], y, at[1]]} scale={pool ? [poolStretch, 1, 1] : [1, 1, 1]} renderOrder={-40} frustumCulled={false} />
 }
