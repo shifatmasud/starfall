@@ -21,11 +21,111 @@ import { Bubbles } from '../painted/Bubbles'
  *   orb       the glass ball lens: it refracts a capture of this very scene, so what it shows is the
  *             world behind it, inverted the way a crystal ball does
  *   streak    the orb's light trail (optional), bubbles for the descent (optional)
- *   post      Bloom → grade → the ScreenPaint lens → SMAA, the same chain as scenes 1 and 2
+ *   post      Bloom → painterly diffusion → grade → the ScreenPaint lens, the same chain as 1 and 2
  *
  * Underwater (7, 8) has no photographed sky: `water` replaces the HDRI with a depth-graded sea and
  * fog, and the scans (coral, shells, rock) carry the realism.
+ *
+ * Atmosphere: three's own fog chunks are patched once, here, so every standard material — terrain,
+ * water, grass, scans, ruins — carries the same air: an altitude-thinned exponential haze with Mie
+ * forward scattering toward the sun, and, underwater, Beer–Lambert absorption of the red channel
+ * with distance. That is what dissolves the far field instead of leaving paper cut-outs.
  */
+
+/** the atmosphere every foggy material reads (kept in three's fog uniform library) */
+export const ATMOS_UNIFORMS = {
+  uSunDir: { value: new THREE.Vector3(0.4, 0.6, -0.7).normalize() },
+  uSunHazeColor: { value: new THREE.Color('#ffe8c8') },
+  uHazeHeightFalloff: { value: 0.06 },
+  uHazeBaseY: { value: 0.0 },
+  uMieStrength: { value: 0.45 },
+  uIsUnderwater: { value: 0.0 },
+  uWaterTopColor: { value: new THREE.Color('#4ec5e6') },
+}
+
+let fogPatched = false
+
+function ensureAtmosphericFogPatch() {
+  if (fogPatched) return
+  fogPatched = true
+
+  THREE.ShaderChunk.fog_pars_vertex = /* glsl */ `
+    #ifdef USE_FOG
+      varying float vFogDepth;
+      varying vec3 vAtmosWorldPos;
+    #endif
+  `
+  THREE.ShaderChunk.fog_vertex = /* glsl */ `
+    #ifdef USE_FOG
+      vFogDepth = - mvPosition.z;
+      vec4 atmosWp = vec4( transformed, 1.0 );
+      #ifdef USE_INSTANCING
+        atmosWp = instanceMatrix * atmosWp;
+      #endif
+      atmosWp = modelMatrix * atmosWp;
+      vAtmosWorldPos = atmosWp.xyz;
+    #endif
+  `
+  THREE.ShaderChunk.fog_pars_fragment = /* glsl */ `
+    #ifdef USE_FOG
+      uniform vec3 fogColor;
+      varying float vFogDepth;
+      varying vec3 vAtmosWorldPos;
+      uniform vec3 uSunDir;
+      uniform vec3 uSunHazeColor;
+      uniform float uHazeHeightFalloff;
+      uniform float uHazeBaseY;
+      uniform float uMieStrength;
+      uniform float uIsUnderwater;
+      uniform vec3 uWaterTopColor;
+      #ifdef FOG_EXP2
+        uniform float fogDensity;
+      #else
+        uniform float fogNear;
+        uniform float fogFar;
+      #endif
+    #endif
+  `
+  THREE.ShaderChunk.fog_fragment = /* glsl */ `
+    #ifdef USE_FOG
+      vec3 viewRay = vAtmosWorldPos - cameraPosition;
+      float rayDist = max(length(viewRay), 0.001);
+      vec3 rayDir = viewRay / rayDist;
+
+      #ifdef FOG_EXP2
+        float opticalDepth = fogDensity * fogDensity * vFogDepth * vFogDepth;
+        float fogFactor = 1.0 - exp( - opticalDepth );
+      #else
+        // an exponential approach to the far limit: near objects stay crisp, the horizon dissolves
+        float linT = clamp( ( vFogDepth - fogNear ) / max( fogFar - fogNear, 0.001 ), 0.0, 1.0 );
+        float expT = 1.0 - exp( - linT * 2.6 );
+        float fogFactor = mix( linT, expT, 0.72 );
+      #endif
+
+      // altitude: the haze pools in the valleys and on the waterline, the peaks float above it
+      float relY = max(vAtmosWorldPos.y - uHazeBaseY, 0.0);
+      float altAtten = mix(1.0, exp(-relY * uHazeHeightFalloff), 0.65);
+      fogFactor = clamp(fogFactor * altAtten, 0.0, 0.96);
+
+      // Mie forward scattering: the air warms and brightens toward the sun
+      float sunAmt = max(dot(rayDir, normalize(uSunDir)), 0.0);
+      float mie = pow(sunAmt, 5.0) * uMieStrength + pow(sunAmt, 1.6) * (uMieStrength * 0.35);
+      vec3 scatterColor = mix(fogColor, uSunHazeColor, clamp(mie, 0.0, 0.85));
+
+      if (uIsUnderwater > 0.5) {
+        // Beer–Lambert: red is absorbed first, so distance turns cyan instead of yellow-green
+        vec3 absorb = exp(-vec3(0.42, 0.11, 0.045) * vFogDepth);
+        gl_FragColor.rgb *= mix(vec3(1.0), absorb, 0.85);
+        float upLift = clamp(rayDir.y * 0.5 + 0.5, 0.0, 1.0);
+        scatterColor = mix(fogColor, uWaterTopColor, pow(upLift, 1.6) * 0.65);
+      }
+
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, scatterColor, fogFactor );
+    #endif
+  `
+
+  Object.assign(THREE.UniformsLib.fog as Record<string, { value: unknown }>, ATMOS_UNIFORMS)
+}
 
 export type ScanSceneProps = {
   hdri?: string
@@ -54,14 +154,19 @@ export type ScanSceneProps = {
   bubbles?: { dir: [number, number]; len: number; spread: number; size: number; count?: number }
   /** the orb's glow on the scans around it */
   glow?: { color: string; intensity: number; distance: number }
-  /** atmospheric perspective: colour and the near/far range over which it thickens */
-  fog?: { color: string; near: number; far: number }
+  /**
+   * atmospheric perspective: colour and the near/far range over which it thickens, the colour the
+   * haze turns toward the sun, the Mie strength and the altitude falloff
+   */
+  fog?: { color: string; near: number; far: number; sunColor?: string; mie?: number; heightFalloff?: number }
   clear: string
   poster: { portrait: string; landscape: string }
   bloom?: number
   exposure?: number
-  soften?: { amount: number; radius: number; mist?: number }
+  soften?: { amount: number; radius: number; mist?: number; mistColor?: string }
   haze?: number
+  shadowFloor?: string
+  grade?: number
   children?: ReactNode
 }
 
@@ -100,16 +205,20 @@ function Sea({ top, deep, fog }: { top: string; deep: string; fog: number }) {
           void main(){
             float y = vDir.y;
             vec3 c = mix(uDeep, uTop, smoothstep(-0.35, 0.85, y));
-            c += vec3(0.55, 0.85, 1.0) * pow(max(y, 0.0), 6.0) * 0.6; // the bright surface overhead
+            c += vec3(0.45, 0.82, 1.0) * pow(max(y, 0.0), 5.0) * 0.55; // the bright surface overhead
             o = vec4(c, 1.0);
           }`,
       }),
     [top, deep],
   )
   useEffect(() => {
-    scene.fog = new THREE.FogExp2(new THREE.Color(deep).lerp(new THREE.Color(top), 0.35), fog)
+    const fogCol = new THREE.Color(deep).lerp(new THREE.Color(top), 0.38)
+    scene.fog = new THREE.FogExp2(fogCol, fog)
+    ATMOS_UNIFORMS.uIsUnderwater.value = 1.0
+    ATMOS_UNIFORMS.uWaterTopColor.value.set(top)
     return () => {
       scene.fog = null
+      ATMOS_UNIFORMS.uIsUnderwater.value = 0.0
     }
   }, [scene, top, deep, fog])
   return (
@@ -234,10 +343,12 @@ function Rays({ x, y, color, strength, haze = 0.35 }: NonNullable<ScanSceneProps
             vec2 d = (vUv - uSun) * vec2(uAspect, 1.0);
             float r = length(d);
             float a = atan(d.x, -d.y);
-            float shafts = smoothstep(0.35, 0.9, vn(a * 5.0 + uTime * 0.03)) * 0.8 + smoothstep(0.5, 0.95, vn(a * 13.0 + 7.0)) * 0.4;
-            float fall = exp(-r * 2.2) * smoothstep(0.0, 0.08, r);
-            float down = smoothstep(0.25, -0.2, -d.y * 0.0 + (uSun.y - vUv.y) * -1.0 + 0.0);
-            vec3 c = uCol * (shafts * fall * uS + exp(-r * 2.4) * uHaze + exp(-r * 18.0) * 0.8);
+            // two soft octaves of beams, so the shafts feather into the water instead of cutting spokes
+            float b1 = smoothstep(0.25, 0.92, vn(a * 3.8 + uTime * 0.025));
+            float b2 = smoothstep(0.30, 0.95, vn(a * 8.5 + 4.2));
+            float shafts = pow(b1 * 0.65 + b2 * 0.35, 1.6);
+            float fall = exp(-r * 1.85) * smoothstep(0.0, 0.14, r);
+            vec3 c = uCol * (shafts * fall * uS + exp(-r * 2.1) * uHaze + exp(-r * 12.0) * 0.45);
             o = vec4(c, 1.0);
           }`,
       }),
@@ -256,7 +367,16 @@ function Rays({ x, y, color, strength, haze = 0.35 }: NonNullable<ScanSceneProps
 }
 
 function Inner(props: ScanSceneProps) {
+  ensureAtmosphericFogPatch()
   const { hdri, ground, envIntensity = 1, bgIntensity = 1, skyYaw = 0, skyPitch = 0, sun, fill, water, camera, bloom = 0.4, exposure = 1, children } = props
+
+  useEffect(() => {
+    if (sun) ATMOS_UNIFORMS.uSunDir.value.set(...sun.from).normalize()
+    ATMOS_UNIFORMS.uSunHazeColor.value.set(props.fog?.sunColor ?? sun?.color ?? '#ffe8c8')
+    ATMOS_UNIFORMS.uMieStrength.value = props.fog?.mie ?? 0.45
+    ATMOS_UNIFORMS.uHazeHeightFalloff.value = props.fog?.heightFalloff ?? 0.06
+  }, [sun, props.fog?.sunColor, props.fog?.mie, props.fog?.heightFalloff])
+
   return (
     <>
       <Aim target={camera.target} />
@@ -273,7 +393,16 @@ function Inner(props: ScanSceneProps) {
       <Suspense fallback={null}>{children}</Suspense>
       <Orb orb={props.orb} look={props.look} streak={props.streak} bubbles={props.bubbles} glow={props.glow} />
       <FrameProbe />
-      {new URLSearchParams(location.search).has('nopost') ? null : <PostFX bloom={bloom} exposure={exposure} soften={props.soften} haze={props.haze} />}
+      {new URLSearchParams(location.search).has('nopost') ? null : (
+        <PostFX
+          bloom={bloom}
+          exposure={exposure}
+          soften={props.soften}
+          haze={props.haze}
+          shadowFloor={props.shadowFloor}
+          grade={props.grade}
+        />
+      )}
     </>
   )
 }

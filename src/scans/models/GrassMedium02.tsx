@@ -168,8 +168,13 @@ varying float vH;`,
           '#include <emissivemap_fragment>',
           `#include <emissivemap_fragment>
 {
+  // lift the scan's baked dark texels: a blade of grass must never draw a black speck
+  float gl = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+  diffuseColor.rgb = mix(diffuseColor.rgb, max(diffuseColor.rgb, vec3(0.16, 0.15, 0.10)), smoothstep(0.22, 0.02, gl) * 0.85);
+  // a dry reed is a warm, light thing: pull the scan's dark fibres toward sunlit straw
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.52, 0.46, 0.28), 0.5);
   // the foot of the tuft sits in the moss's shade; the tips catch the light
-  diffuseColor.rgb *= mix(0.6, 1.1, smoothstep(0.0, 0.75, vH));
+  diffuseColor.rgb *= mix(0.78, 1.12, smoothstep(0.0, 0.75, vH));
   // light through the blades: forward scattering toward the sun, stronger at the thin tips
   vec3 V = normalize(vViewPosition);
   float fwd = pow(clamp(dot(-V, uSunView), 0.0, 1.0), 3.0);

@@ -127,3 +127,33 @@ The scanned and modelled assets shipped in `public/` are third-party work:
 
 Binary assets that had to travel through a text-only contents API are committed base64-encoded
 (`*.b64`) and decoded to their real form by `vite.config.ts` at build time.
+
+## The painterly pass (2026-11-27)
+
+The user's note on pass 3 was "looks disgusting, harsh". The cause was structural, not a matter of
+taste knobs, and the fixes are now in the shared frame plus the four worst panels:
+
+- **Grade (`src/gl/PostFX.tsx`).** `FinalShader` lifts the toe: 0.0 becomes a coloured shadow floor
+  (`uShadowFloor`, per scene) instead of black, with a pastel roll-off that desaturates the extremes
+  and a gentle knee so highlights glow. `PainterlyShader` replaces the old 24-tap disc blur with an
+  8-tap four-quadrant Kuwahara-lite: the lowest-variance direction wins, so scan gravel and leaf noise
+  flatten into strokes of tone while silhouettes stay put, plus a highlight bleed and a tinted veil.
+- **Atmosphere (`src/scenes/scan/ScanScene.tsx`).** The three.js fog chunks (`fog_pars_vertex`,
+  `fog_vertex`, `fog_pars_fragment`, `fog_fragment`) are patched once at module load, so every standard
+  material — terrain, water, grass, scans — carries the same air: an exponential approach to the far
+  limit, thinned by altitude (`uHazeHeightFalloff`), with Mie forward scattering toward the sun
+  (`uSunHazeColor`, `uMieStrength`), and, underwater, Beer–Lambert absorption of the red channel.
+- **Surfaces (`src/scenes/scan/Fit.tsx`).** `applyPainterlySurface` injects into each scan's
+  MeshStandardMaterial: a cavity lift of baked-dark texels (the black specks), a wrapped terminator
+  with a coloured shadow fill, a sun-grazing Fresnel rim, a back-lit subsurface lift, and optional
+  wind ripples in the shading normal. It chains with `applySSS` / `applyOcclusion`.
+- **Light (`src/scenes/painted/LightStreak.tsx`).** The trail is light in air: a soft diffused core
+  inside a wide sheath, not a laser wire.
+- **Scene 5 rebuilt without scans** (`src/scenes/oasis/`): `DuneField` (wind-crested dunes, carved
+  basin, shore capillary band, analytical cast shadows baked into the ground), `DatePalm` (ringed
+  tapered trunk, pinnate drooping fronds generated as geometry), `Ruins` (a real Doric order with
+  entasis, flutes, capitals, broken shafts and fallen drums) and `OasisFoliage` (reed clusters and
+  stratified sandstone boulders), with `SoftShadow` contact shade under every prop. The pool and the
+  other panels keep the measured NOAA NDBC spectrum — no synthetic wave model was reintroduced.
+- **Orb.** The glass rim is a soft gradient that melts into its halo instead of a bright hoop; the
+  orbital rings remain removed.

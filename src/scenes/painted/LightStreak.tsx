@@ -41,21 +41,27 @@ float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
 void main() {
   float t = clamp(vA.x, 0.0, 1.0);
-  // the ribbon tapers to a thread; yn is in local half-widths, so |yn| = 1 IS the quad edge
-  float taper = mix(1.0, 0.12, pow(t, 0.6));
+  // the ribbon broadens as it diffuses into the air instead of pinching to a razor wire
+  float taper = mix(1.0, 0.42, pow(t, 0.75));
   float yn = vA.y / taper;
-  float edge = smoothstep(1.0, 0.45, abs(yn));        // reaches 0 well before the boundary
-  float head = smoothstep(0.0, 0.05, vA.x);           // melts into the orb
-  float tail = pow(1.0 - t, 1.5);
+  float edge = smoothstep(1.0, 0.25, abs(yn));        // reaches 0 well before the boundary
+  float head = smoothstep(0.0, 0.06, vA.x);           // melts into the orb
+  float tail = pow(1.0 - t, 1.85);
   float fade = head * tail * edge;
-  float core = exp(-yn * yn * 8.0) * fade;
-  float sheath = exp(-yn * yn * 1.6) * pow(1.0 - t, 2.2) * 0.45 * edge * head;
-  float strands = vn(vec2(t * 7.0 - uTime * 0.6, yn * 3.5)) * exp(-yn * yn * 2.2) * fade;
-  strands = smoothstep(0.55, 0.95, strands) * 0.6;
-  vec2 sg = vec2(t * 60.0 - uTime * 3.0, yn * 3.0);
+
+  // a soft diffused core inside a wide ethereal sheath: light in air, not a laser wire
+  float core = exp(-yn * yn * 3.2) * fade * 0.65;
+  float sheath = exp(-yn * yn * 0.85) * pow(1.0 - t, 1.5) * 0.55 * edge * head;
+  float strands = vn(vec2(t * 5.0 - uTime * 0.45, yn * 2.4)) * exp(-yn * yn * 1.4) * fade;
+  strands = smoothstep(0.45, 0.92, strands) * 0.45;
+
+  vec2 sg = vec2(t * 44.0 - uTime * 2.2, yn * 2.2);
   float sp = h21(floor(sg));
-  float spark = step(0.93, sp) * smoothstep(0.5, 0.0, length(fract(sg) - 0.5)) * fade * 1.2;
-  vec3 col = vec3(1.0, 0.99, 0.97) * core * 1.5 + uColor * (sheath + strands) + mix(uColor, vec3(1.0), 0.6) * spark;
+  float spark = step(0.94, sp) * smoothstep(0.55, 0.0, length(fract(sg) - 0.5)) * fade * 0.85;
+
+  vec3 col = mix(uColor, vec3(1.0, 0.99, 0.97), 0.72) * core
+           + uColor * (sheath + strands)
+           + mix(uColor, vec3(1.0), 0.5) * spark;
   fragColor = vec4(col * uStrength, 1.0);
 }
 `

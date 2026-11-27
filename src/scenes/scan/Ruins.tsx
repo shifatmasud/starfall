@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { applyPainterlySurface } from './Fit'
 
 /**
  * A ruined classical colonnade in sandstone, built as geometry: the reference's desert temple is a row
@@ -178,8 +179,12 @@ export function RuinTemple({
 }) {
   const geo = useMemo(() => buildTemple(seed), [seed])
   const mat = useMemo(
-    () => new THREE.MeshStandardMaterial({ vertexColors: true, color: '#ffffff', roughness: 0.95, metalness: 0, emissive: new THREE.Color('#8a6540'), emissiveIntensity: 0.32 }),
+    () =>
+      new THREE.MeshStandardMaterial({ vertexColors: true, color: '#ffffff', roughness: 0.95, metalness: 0, emissive: new THREE.Color('#8a6540'), emissiveIntensity: 0.04 }),
     [],
   )
+  useEffect(() => {
+    applyPainterlySurface(mat, { soft: 0.85, rimColor: '#fff0d4', shadowTint: '#8a6a52', sunDir: [-0.55, 0.42, -0.72] })
+  }, [mat])
   return <mesh geometry={geo} material={mat} position={position} rotation={[0, yaw, 0]} scale={scale} />
 }

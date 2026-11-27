@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
+import { applyPainterlySurface } from './Fit'
 
 /**
  * A spruce/fir for the lake's slopes: a bare trunk with tiers of drooping cone skirts, the silhouette
@@ -20,10 +21,10 @@ export function buildConifer(height: number, seed = 1) {
     col.push(ca.r, ca.g, ca.b, cb.r, cb.g, cb.b, cc.r, cc.g, cc.b)
     idx.push(base, base + 1, base + 2)
   }
-  const dark = new THREE.Color('#2b4530')
-  const mid = new THREE.Color('#41613a')
-  const lit = new THREE.Color('#6d8d4c')
-  const bark = new THREE.Color('#4a3a2c')
+  const dark = new THREE.Color('#2f4a38')
+  const mid = new THREE.Color('#46653f')
+  const lit = new THREE.Color('#71894f')
+  const bark = new THREE.Color('#4c3d2e')
   const trunkR = height * 0.018
   const SIDES = 8
   // trunk
@@ -86,16 +87,23 @@ export function Conifers({
   trees,
   position = [0, 0, 0],
   yaw = 0,
+  soft = 0.9,
+  sunDir = [0.4, 0.7, -0.5],
 }: {
   /** x, y, z, height, seed */
   trees: [number, number, number, number, number][]
   position?: [number, number, number]
   yaw?: number
+  /** painterly surface strength: wrapped light, a shadow fill and a sun rim instead of a black silhouette */
+  soft?: number
+  sunDir?: [number, number, number]
 }) {
-  const mat = useMemo(
-    () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, side: THREE.DoubleSide }),
-    [],
-  )
+  const mat = useMemo(() => {
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0, side: THREE.DoubleSide })
+    if (soft > 0) applyPainterlySurface(m, { soft, rimColor: '#fff4dc', shadowTint: '#6c88a8', sunDir })
+    return m
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [soft])
   return (
     <group position={position} rotation={[0, yaw, 0]}>
       {trees.map(([x, y, z, h, seed], i) => (

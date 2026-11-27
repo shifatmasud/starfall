@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { hash, vnoise } from '../../scans/scatter'
+import { applyPainterlySurface } from './Fit'
 
 /**
  * Scene 4's foreground: the pasture bank that runs from the lower left up and across the frame, its
@@ -61,9 +62,10 @@ export function Bank({ position = [0, 0, 0] }: { position?: [number, number, num
     g.computeBoundingSphere()
     return g
   }, [position[0], position[1], position[2]])
-  const mat = useMemo(
-    () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 }),
-    [],
-  )
+  const mat = useMemo(() => {
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 })
+    applyPainterlySurface(m, { soft: 0.6, rimColor: '#fff6e0', shadowTint: '#5c7a4e', sunDir: [0.5, 0.55, -0.65], ripple: 0.35 })
+    return m
+  }, [])
   return <mesh geometry={geo} material={mat} position={[position[0], position[1], -7.2 + position[2]]} frustumCulled={false} />
 }

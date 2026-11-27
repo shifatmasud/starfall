@@ -86,8 +86,8 @@ void main() {
   float nh = max(dot(n, H), 0.0);
   float spec = pow(nh, 220.0) * 3.2 + pow(nh, 26.0) * 0.18;
   float side = dot(q / max(d, 1e-4), L);
-  float rim = smoothstep(0.80, 0.985, dd) * (1.0 - smoothstep(0.985, 1.0 + aa, d) * 0.6);
-  vec3 rimLight = uRimCol * rim * (0.55 + 0.65 * max(side, 0.0));
+  float rim = smoothstep(0.62, 1.0, dd) * (1.0 - smoothstep(0.985, 1.0 + aa, d) * 0.75);
+  vec3 rimLight = uRimCol * rim * (0.22 + 0.4 * max(side, 0.0));
   float caustic = smoothstep(0.42, 0.90, dd) * (1.0 - smoothstep(0.90, 0.99, dd)) * pow(max(-side, 0.0), 1.5);
   col += trans * caustic * 0.9 + uRimCol * caustic * 0.18;
   col += rimLight + vec3(1.0, 0.98, 0.94) * spec;

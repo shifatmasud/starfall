@@ -76,29 +76,46 @@ const FinalShader = /* glsl */ `
 uniform float uExposure;
 uniform float uGrade;
 uniform float uTime;
+uniform vec3 uShadowFloor;
 ${SRGB_GLSL}
+float luma709(vec3 c) {
+  return dot(c, vec3(0.2126, 0.7152, 0.0722));
+}
 
-/** identity through the middle, an exponential shoulder into white, so nothing clips flat */
-vec3 shoulder(vec3 c) {
-  const float knee = 0.78;
+/**
+ * The anime-filmic curve: a toe that lifts 0 into a coloured shadow floor (nothing ever reaches
+ * black, shadows are filled with bounced sky), a gentle knee so highlights glow instead of clipping.
+ */
+vec3 animeCurve(vec3 c, vec3 floorCol) {
+  float lum = luma709(c);
+  float toe = pow(1.0 - smoothstep(0.0, 0.34, lum), 2.6);
+  c = c + floorCol * toe;
+
+  const float knee = 0.68;
   vec3 over = max(c - knee, 0.0);
-  vec3 rolled = knee + (1.0 - exp(-over * 3.4)) * (1.0 - knee);
+  vec3 rolled = knee + (1.0 - exp(-over * 2.5)) * (1.0 - knee);
   return mix(c, rolled, step(knee, c));
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec3 col = max(inputColor.rgb, 0.0) * uExposure;
-  col = shoulder(col);
+  col = animeCurve(col, uShadowFloor);
 
-  float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
-  col = mix(vec3(lum), col, mix(1.0, 1.14, uGrade));
-  col = (col - 0.5) * mix(1.0, 1.05, uGrade) + 0.5;
-  // cool the shadows a breath, warm the highlights: the plate's own split
-  col += vec3(-0.010, -0.004, 0.016) * (1.0 - smoothstep(0.06, 0.48, lum)) * uGrade;
-  col += vec3(0.014, 0.006, -0.010) * smoothstep(0.50, 0.95, lum) * uGrade;
+  float lum = luma709(col);
+  // the pastel roll-off: deep shadows and blown highlights lose chroma, the mid-tones keep it
+  float extreme = smoothstep(0.18, 0.04, lum) * 0.45 + smoothstep(0.72, 0.98, lum) * 0.55;
+  float sat = mix(0.92, 0.62, clamp(extreme, 0.0, 1.0));
+  col = mix(vec3(lum), col, mix(1.0, sat, uGrade));
+
+  // a breath of contrast compression: raw scan contrast is the enemy
+  col = (col - 0.5) * mix(1.0, 1.06, uGrade) + 0.5;
+
+  // cool the shadows a breath, warm the highlights
+  col += vec3(-0.012, -0.004, 0.022) * (1.0 - smoothstep(0.08, 0.52, lum)) * uGrade;
+  col += vec3(0.014, 0.007, -0.010) * smoothstep(0.48, 0.94, lum) * uGrade;
 
   vec2 lens = uv - 0.5;
-  col *= 1.0 - dot(lens, lens) * mix(0.0, 0.30, uGrade);
+  col *= 1.0 - dot(lens, lens) * mix(0.0, 0.20, uGrade);
 
   col = clamp(col, 0.0, 1.0);
   col += (bnoise(gl_FragCoord.xy + uTime) - 0.5) / 255.0;
@@ -189,44 +206,79 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `
 
 /**
- * Soften: the painterly diffusion of the reference panels. A golden-angle disc blur of the frame is
- * mixed back over it (edges and fine scan detail melt into strokes of tone), and the blur is also
- * screened over the frame as a mist, so highlights spill into the air around them the way light does
- * through haze. 0 leaves the frame untouched.
+ * Painterly diffusion: the reference panels' painted surface. An 8-tap, four-quadrant Kuwahara-lite
+ * (the lowest-variance direction wins) flattens photogrammetry gravel and leaf noise into strokes of
+ * tone while leaving silhouettes alone, a broad highlight bleed haloes the sunlit areas, and a tinted
+ * veil breathes the air of the panel over the distance — never the flat grey of a Gaussian blur.
  */
-const SoftenShader = /* glsl */ `
+const PainterlyShader = /* glsl */ `
 uniform float uSoft;
 uniform float uRadius;
 uniform float uMist;
+uniform vec3 uMistColor;
+${SRGB_GLSL}
+float luma709(vec3 c) {
+  return dot(c, vec3(0.2126, 0.7152, 0.0722));
+}
+
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  vec3 acc = inputColor.rgb;
-  float wsum = 1.0;
-  for (int i = 1; i < 24; i++) {
-    float fi = float(i);
-    float r = sqrt(fi / 24.0);
-    float a = fi * 2.39996;
-    vec2 o = vec2(cos(a), sin(a)) * r * uRadius * texelSize;
-    float w = 1.0 - r * 0.5;
-    acc += texture(inputBuffer, uv + o).rgb * w;
-    wsum += w;
+  vec3 c0 = inputColor.rgb;
+  if (uSoft <= 0.001 && uMist <= 0.001) {
+    outputColor = inputColor;
+    return;
   }
-  vec3 blur = acc / wsum;
-  vec3 col = mix(inputColor.rgb, blur, uSoft);
-  vec3 mist = clamp(blur, 0.0, 1.0) * uMist;
-  col = 1.0 - (1.0 - col) * (1.0 - mist);
+
+  vec2 r1 = texelSize * uRadius * 0.65;
+  vec2 r2 = texelSize * uRadius * 1.35;
+
+  vec3 a1 = texture(inputBuffer, uv + vec2(-r1.x, -r1.y)).rgb;
+  vec3 a2 = texture(inputBuffer, uv + vec2(-r2.x, -r2.y)).rgb;
+  vec3 mA = (c0 + a1 + a2) / 3.0;
+  float vA = dot(abs(a1 - mA) + abs(a2 - mA), vec3(0.3333));
+
+  vec3 b1 = texture(inputBuffer, uv + vec2( r1.x, -r1.y)).rgb;
+  vec3 b2 = texture(inputBuffer, uv + vec2( r2.x, -r2.y)).rgb;
+  vec3 mB = (c0 + b1 + b2) / 3.0;
+  float vB = dot(abs(b1 - mB) + abs(b2 - mB), vec3(0.3333));
+
+  vec3 c1 = texture(inputBuffer, uv + vec2(-r1.x,  r1.y)).rgb;
+  vec3 c2 = texture(inputBuffer, uv + vec2(-r2.x,  r2.y)).rgb;
+  vec3 mC = (c0 + c1 + c2) / 3.0;
+  float vC = dot(abs(c1 - mC) + abs(c2 - mC), vec3(0.3333));
+
+  vec3 d1 = texture(inputBuffer, uv + vec2( r1.x,  r1.y)).rgb;
+  vec3 d2 = texture(inputBuffer, uv + vec2( r2.x,  r2.y)).rgb;
+  vec3 mD = (c0 + d1 + d2) / 3.0;
+  float vD = dot(abs(d1 - mD) + abs(d2 - mD), vec3(0.3333));
+
+  float wA = 1.0 / (0.004 + vA * vA * 18.0);
+  float wB = 1.0 / (0.004 + vB * vB * 18.0);
+  float wC = 1.0 / (0.004 + vC * vC * 18.0);
+  float wD = 1.0 / (0.004 + vD * vD * 18.0);
+  vec3 stroke = (mA * wA + mB * wB + mC * wC + mD * wD) / (wA + wB + wC + wD);
+
+  vec3 wide = (mA + mB + mC + mD) * 0.25;
+  float hi = smoothstep(0.52, 1.05, luma709(wide));
+
+  vec3 col = mix(c0, stroke, clamp(uSoft * 1.35, 0.0, 0.85));
+  col += wide * hi * uSoft * 0.22;
+  vec3 veil = clamp(wide * 0.65 + uMistColor * 0.35, 0.0, 1.0) * uMist;
+  col = 1.0 - (1.0 - col) * (1.0 - veil);
+
   outputColor = vec4(col, inputColor.a);
 }
 `
 
-class SoftenEffect extends Effect {
+class PainterlyEffect extends Effect {
   constructor() {
-    super('SoftenEffect', SoftenShader, {
+    super('PainterlyEffect', PainterlyShader, {
       blendFunction: BlendFunction.SRC,
       attributes: EffectAttribute.CONVOLUTION,
       uniforms: new Map<string, THREE.Uniform>([
         ['uSoft', new THREE.Uniform(0)],
-        ['uRadius', new THREE.Uniform(3)],
+        ['uRadius', new THREE.Uniform(2.6)],
         ['uMist', new THREE.Uniform(0)],
+        ['uMistColor', new THREE.Uniform(new THREE.Color('#dce8f8'))],
       ]),
     })
   }
@@ -238,8 +290,9 @@ class FinalEffect extends Effect {
       blendFunction: BlendFunction.SRC,
       uniforms: new Map<string, THREE.Uniform>([
         ['uExposure', new THREE.Uniform(exposure)],
-        ['uGrade', new THREE.Uniform(0.35)],
+        ['uGrade', new THREE.Uniform(0.65)],
         ['uTime', new THREE.Uniform(0)],
+        ['uShadowFloor', new THREE.Uniform(new THREE.Color('#1a2230'))],
       ]),
     })
   }
@@ -267,10 +320,14 @@ class DistortEffect extends Effect {
 export type PostFXProps = {
   bloom?: number
   exposure?: number
-  /** painterly softening: share of the blurred frame mixed in, its radius in pixels, and the mist */
-  soften?: { amount: number; radius: number; mist?: number }
+  /** painterly diffusion: Kuwahara-lite stroke blend, its radius in pixels, the veil, the veil tint */
+  soften?: { amount: number; radius: number; mist?: number; mistColor?: string }
   /** a second, wide, low-threshold bloom: light breathing into the air (0 = off) */
   haze?: number
+  /** the colour the toe lifts the blacks to: a luminous shadow, never black */
+  shadowFloor?: string
+  /** grade strength 0..1 (split tone, pastel roll-off, vignette) */
+  grade?: number
 }
 
 /** The live cursor-trail field, so the app's pointer listeners can paint it. */
@@ -279,7 +336,14 @@ export const trailRef: { current: FluidTrail | null } = { current: null }
 /** the last point of contact, in CSS pixels: the centre of the liquid bead */
 const bead = { x: 0.5, y: 0.5 }
 
-export function PostFX({ bloom = 0.62, exposure = 1.06, soften, haze = 0 }: PostFXProps) {
+export function PostFX({
+  bloom = 0.62,
+  exposure = 1.06,
+  soften,
+  haze = 0,
+  shadowFloor = '#1a2230',
+  grade = 0.65,
+}: PostFXProps) {
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera as THREE.PerspectiveCamera)
@@ -360,22 +424,22 @@ export function PostFX({ bloom = 0.62, exposure = 1.06, soften, haze = 0 }: Post
 
     const bloomEffect = new BloomEffect({
       blendFunction: BlendFunction.ADD,
-      luminanceThreshold: 0.98,
-      luminanceSmoothing: 0.12,
+      luminanceThreshold: 0.92,
+      luminanceSmoothing: 0.3,
       intensity: 0,
       mipmapBlur: true,
-      radius: 0.78,
+      radius: 0.82,
     })
     const hazeEffect = new BloomEffect({
       blendFunction: BlendFunction.SCREEN,
-      luminanceThreshold: 0.55,
-      luminanceSmoothing: 0.4,
+      luminanceThreshold: 0.56,
+      luminanceSmoothing: 0.5,
       intensity: 0,
       mipmapBlur: true,
-      radius: 0.92,
+      radius: 0.94,
       levels: 7,
     })
-    const soft = new SoftenEffect()
+    const soft = new PainterlyEffect()
     const final = new FinalEffect(exposure)
     const distort = new DistortEffect(trail.texture, trail.texelSize)
 
@@ -396,11 +460,15 @@ export function PostFX({ bloom = 0.62, exposure = 1.06, soften, haze = 0 }: Post
     composer.bloomEffect.intensity = bloom
     composer.hazeEffect.intensity = haze
     composer.soft.uniforms.get('uSoft')!.value = soften?.amount ?? 0
-    composer.soft.uniforms.get('uRadius')!.value = (soften?.radius ?? 3) * gl.getPixelRatio()
+    composer.soft.uniforms.get('uRadius')!.value = (soften?.radius ?? 2.6) * gl.getPixelRatio()
     composer.soft.uniforms.get('uMist')!.value = soften?.mist ?? 0
-    const u = composer.final.uniforms.get('uExposure')
-    if (u) u.value = exposure
-  }, [composer, bloom, exposure, haze, soften?.amount, soften?.radius, soften?.mist, gl])
+    ;(composer.soft.uniforms.get('uMistColor')!.value as THREE.Color).set(soften?.mistColor ?? '#dce8f8')
+    const uExp = composer.final.uniforms.get('uExposure')
+    if (uExp) uExp.value = exposure
+    const uGr = composer.final.uniforms.get('uGrade')
+    if (uGr) uGr.value = grade
+    ;(composer.final.uniforms.get('uShadowFloor')!.value as THREE.Color).set(shadowFloor)
+  }, [composer, bloom, exposure, haze, grade, shadowFloor, soften?.amount, soften?.radius, soften?.mist, soften?.mistColor, gl])
 
   // The chain runs at the canvas's own device resolution, capped by a pixel budget: several RGBA16F
   // buffers at full phone resolution is how a phone loses its context.

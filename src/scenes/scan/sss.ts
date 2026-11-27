@@ -45,7 +45,10 @@ export function applyOcclusion(mat: THREE.Material, strength = 1) {
 export function applySSS(mat: THREE.Material, sss: SSS) {
   const m = mat as THREE.MeshStandardMaterial
   const key = `sss-${sss.color.join(',')}-${sss.strength}-${sss.power ?? 3}-${sss.distortion ?? 0.3}-${sss.ambient ?? 0}`
-  m.onBeforeCompile = (shader) => {
+  const prev = m.onBeforeCompile
+  const prevKey = m.customProgramCacheKey?.bind(m)
+  m.onBeforeCompile = (shader, renderer) => {
+    prev?.call(m, shader, renderer)
     shader.uniforms.uSssCol = { value: new THREE.Vector3(...sss.color) }
     shader.uniforms.uSssStr = { value: sss.strength }
     shader.uniforms.uSssPow = { value: sss.power ?? 3 }
@@ -72,6 +75,6 @@ export function applySSS(mat: THREE.Material, sss: SSS) {
 #endif`,
       )
   }
-  m.customProgramCacheKey = () => key
+  m.customProgramCacheKey = () => `${prevKey ? prevKey() : ''}|${key}`
   m.needsUpdate = true
 }

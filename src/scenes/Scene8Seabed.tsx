@@ -15,46 +15,56 @@ import { LambisShell } from '../scans/models/LambisShell'
  * The reef is real: four Smithsonian CC0 coral specimens (Acropora, Pocillopora, Porites, Favia),
  * Poly Haven scanned rock and a scanned conch shell, on a sandy floor of scanned sand-rock. The orb
  * carries a warm heart, the reference's glow, and lights the coral around it.
+ *
+ * The water does the work: Beer–Lambert absorption of the red channel with distance (see ScanScene's
+ * fog patch) turns the far floor back to cerulean, so the sand is a cool aquamarine mass lit by one
+ * warm pool rather than a yellow field. Rocks and coral keep a blue shadow fill and a cyan rim.
  */
+
+const SUN8: [number, number, number] = [-0.15, 0.95, -0.25]
 
 export function Scene8Seabed() {
   return (
     <ScanScene
-      water={{ top: '#6fd0e6', deep: '#12608a', fog: 0.072 }}
-      sun={{ from: [-1.5, 10, -2], color: '#e2f6ff', intensity: 2.7 }}
-      fill={{ sky: '#9fe4f6', ground: '#6a5636', intensity: 1.4 }}
+      water={{ top: '#63cde8', deep: '#125a86', fog: 0.11 }}
+      sun={{ from: [-1.5, 10, -2], color: '#a8e6ff', intensity: 1.95 }}
+      fill={{ sky: '#8adcf4', ground: '#2a6280', intensity: 1.6 }}
       camera={{ position: [0, 0.55, 0], target: [0, 0.25, -2.4], fov: 50 }}
-      orb={{ position: [0, 0.22, -2.2], radius: 0.17 }}
-      look={{ light: [-0.2, 1], tint: '#fff4e6', rim: '#e6f6ff', haloColor: '#ffd9a0', halo: 0.38, bob: 0, bend: 2.2, gain: 1.2, core: [0.45, 0.3, 0.14] }}
-      rays={{ x: 0.46, y: 1.12, color: '#cfeeff', strength: 0.8, haze: 0.2 }}
-      glow={{ color: '#ffd9a0', intensity: 1.1, distance: 1.6 }}
-      clear="#08324e"
+      orb={{ position: [0, 0.22, -2.2], radius: 0.18 }}
+      look={{ light: [-0.2, 1], tint: '#dcf4ff', rim: '#d8f4ff', haloColor: '#9ee0ff', halo: 0.42, bob: 0, bend: 2.15, gain: 1.08, core: [0.22, 0.16, 0.09] }}
+      rays={{ x: 0.48, y: 1.15, color: '#b6ecff', strength: 0.55, haze: 0.26 }}
+      glow={{ color: '#ffd699', intensity: 0.85, distance: 1.5 }}
+      clear="#0a3858"
       poster={{ portrait: '/poster/scene8-portrait.webp', landscape: '/poster/scene8-landscape.webp' }}
-      bloom={0.55}
-      soften={{ amount: 0.3, radius: 3.4, mist: 0.03 }}
+      bloom={0.42}
+      exposure={1.12}
+      haze={0.1}
+      shadowFloor="#1a3552"
+      grade={0.45}
+      soften={{ amount: 0.24, radius: 2.6, mist: 0.006, mistColor: '#2c82a8' }}
     >
-      <Fit size={16} position={[0, -0.55, -4]} rotation={[0, 0, 0]} strip="#e8d2ac" tint="#ffffff" emissive={['#8a6a3e', 0.16]} occlude={0.4}>
+      <Fit size={16} position={[0, -0.55, -4]} rotation={[0, 0, 0]} strip="#9ec6c6" tint="#ffffff" emissive={['#2f6076', 0.22]} occlude={0.35} soft={0.9} rimColor="#88dcfa" shadowTint="#163b58" sunDir={SUN8}>
         <SandRocksSmall01 />
       </Fit>
-      <Fit size={1.6} position={[-1.5, 0, -3.2]} rotation={[0, 0.7, 0]} tint="#9fb0a8">
+      <Fit size={1.65} position={[-1.45, -0.05, -3.1]} rotation={[0, 0.7, 0]} tint="#4e7c96" occlude={0.35} soft={0.95} rimColor="#78d4f0" shadowTint="#173854" sunDir={SUN8}>
         <CoastRocks05 />
       </Fit>
-      <Fit size={1.4} position={[1.6, 0, -3.4]} rotation={[0, 2.4, 0]} tint="#a8b0a0">
+      <Fit size={1.45} position={[1.55, -0.04, -3.3]} rotation={[0, 2.4, 0]} tint="#54829a" occlude={0.35} soft={0.95} rimColor="#78d4f0" shadowTint="#173854" sunDir={SUN8}>
         <CoastRocks05 />
       </Fit>
-      <Fit size={0.7} position={[-1.05, -0.14, -2.7]} rotation={[0, 0.4, 0]} tint="#f0c8d2" emissive={['#7a4050', 0.08]} clipBelow={0.2} soft={1}>
+      <Fit size={0.72} position={[-1.02, -0.14, -2.65]} rotation={[0, 0.4, 0]} tint="#d8a8c2" emissive={['#4a3250', 0.12]} clipBelow={0.2} soft={1} rimColor="#9ce4ff" shadowTint="#1e4264" sunDir={SUN8}>
         <CoralAcropora />
       </Fit>
-      <Fit size={0.66} position={[0.95, -0.08, -2.55]} rotation={[0, 1.2, 0]} tint="#f0c8a4" emissive={['#8a5a38', 0.08]} clipBelow={0.2} soft={1}>
+      <Fit size={0.68} position={[0.92, -0.08, -2.5]} rotation={[0, 1.2, 0]} tint="#d8b0a0" emissive={['#4a3a48', 0.12]} clipBelow={0.2} soft={1} rimColor="#9ce4ff" shadowTint="#1e4264" sunDir={SUN8}>
         <CoralPocillopora />
       </Fit>
-      <Fit size={0.64} position={[1.5, -0.04, -2.9]} rotation={[0, 0.2, 0]} tint="#d6c8e8" emissive={['#5a4a70', 0.06]} clipBelow={0.2} soft={1}>
+      <Fit size={0.66} position={[1.48, -0.04, -2.85]} rotation={[0, 0.2, 0]} tint="#9cb4dc" emissive={['#2c3e68', 0.1]} clipBelow={0.2} soft={1} rimColor="#9ce4ff" shadowTint="#1e4264" sunDir={SUN8}>
         <CoralPorites />
       </Fit>
-      <Fit size={0.45} position={[-0.55, -0.09, -1.9]} rotation={[0, 2.0, 0]} tint="#e0c8a8" emissive={['#6a5038', 0.08]} clipBelow={0.2} soft={1}>
+      <Fit size={0.46} position={[-0.54, -0.09, -1.9]} rotation={[0, 2.0, 0]} tint="#b4a8b8" emissive={['#363854', 0.12]} clipBelow={0.2} soft={1} rimColor="#9ce4ff" shadowTint="#1e4264" sunDir={SUN8}>
         <CoralFavia />
       </Fit>
-      <Fit size={0.22} position={[0.45, 0, -1.75]} rotation={[0, 0.8, 0]}>
+      <Fit size={0.22} position={[0.45, 0, -1.75]} rotation={[0, 0.8, 0]} tint="#b8ced8" soft={0.85} rimColor="#9ce4ff" shadowTint="#1e4264" sunDir={SUN8}>
         <LambisShell />
       </Fit>
     </ScanScene>

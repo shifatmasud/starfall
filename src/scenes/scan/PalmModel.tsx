@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { DatePalmModel } from '../../scans/models/DatePalmModel'
 import { RoyalPalmModel } from '../../scans/models/RoyalPalmModel'
 import { CoconutPalmModel } from '../../scans/models/CoconutPalmModel'
+import { applyPainterlySurface } from './Fit'
 
 /**
  * Palms from vinish.dev's free model library (CC BY 4.0, credited in each generated component and in
@@ -67,12 +68,13 @@ export function PalmModel({
         if (!m.isMesh) return
         const mat = (m.material as THREE.MeshStandardMaterial).clone()
         // painterly easing (see Fit's `soft`): the frond's own vein detail stays, its bite goes
-        if (mat.normalScale) mat.normalScale.set(0.4, 0.4)
+        if (mat.normalScale) mat.normalScale.set(0.3, 0.3)
         mat.roughness = Math.min(1, (mat.roughness ?? 1) * 1.08)
         mat.metalness = 0
-        mat.emissive = mat.color.clone().multiplyScalar(0.14)
+        mat.emissive = mat.color.clone().multiplyScalar(0.1)
         mat.emissiveIntensity = 1
         mat.side = THREE.DoubleSide
+        applyPainterlySurface(mat, { soft: 0.9, rimColor: '#ffeccc', shadowTint: '#7c8a5c', sunDir: [-0.55, 0.42, -0.72] })
         m.material = mat
       })
     })
