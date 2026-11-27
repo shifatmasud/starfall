@@ -168,14 +168,24 @@ export function DuneField({
         const dBase = Math.hypot((x - sc.x) / (sc.rx * 0.85), (z - sc.z) / (sc.rz * 0.85))
         const sBase = (1 - THREE.MathUtils.smoothstep(dBase, 0.2, 1.15)) * sc.strength * 0.65
 
-        const projX = sc.x + sx * 1.45
-        const projZ = sc.z + sz * 1.45
-        const dProj = Math.hypot((x - projX) / (sc.rx * 1.35), (z - projZ) / (sc.rz * 1.35))
-        const sProj = (1 - THREE.MathUtils.smoothstep(dProj, 0.25, 1.35)) * sc.strength * 0.75
+        const projX = sc.x + sx * 1.9
+        const projZ = sc.z + sz * 1.9
+        const dProj = Math.hypot((x - projX) / (sc.rx * 1.6), (z - projZ) / (sc.rz * 1.6))
+        const sProj = (1 - THREE.MathUtils.smoothstep(dProj, 0.2, 1.4)) * sc.strength * 0.46
 
         shadow = Math.max(shadow, sBase, sProj)
       }
       tmp.lerp(colShadowTint, THREE.MathUtils.clamp(shadow, 0, 0.72))
+
+      // terrain proximity: the ground darkens where the mass actually meets it (no light, no shadow
+      // map — just occlusion), so nothing reads as standing on a painted circle
+      let occl = 0
+      for (let c = 0; c < casters.length; c++) {
+        const sc = casters[c]
+        const dFoot = Math.hypot((x - sc.x) / (sc.rx * 0.5), (z - sc.z) / (sc.rz * 0.5))
+        occl = Math.max(occl, Math.pow(1 - THREE.MathUtils.smoothstep(dFoot, 0.0, 1.0), 1.7))
+      }
+      tmp.multiplyScalar(1 - occl * 0.38)
 
       colors[i * 3] = tmp.r
       colors[i * 3 + 1] = tmp.g

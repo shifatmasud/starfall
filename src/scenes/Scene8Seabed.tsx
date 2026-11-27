@@ -2,6 +2,7 @@ import { ScanScene } from './scan/ScanScene'
 import { Fit } from './scan/Fit'
 import { LambisShell } from '../scans/models/LambisShell'
 import { ReefFloor, ReefRock, ReefLife } from './reef/Reef'
+import { SoftShadow } from './scan/SoftShadow'
 
 /**
  * Scene 8 — Underwater bottom. The orb settles glowing on the sea floor amid coral and rock, light
@@ -42,6 +43,8 @@ export function Scene8Seabed() {
       soften={{ amount: 0.24, radius: 2.6, mist: 0.006, mistColor: '#2c82a8' }}
     >
       <ReefFloor radius={26} />
+      {/* the orb's own contact occlusion: the pool of shade its body cuts out of the seabed light */}
+      <SoftShadow position={[0, 0.02, -2.2]} radius={0.42} stretch={[1.05, 1]} opacity={0.82} color="#0e2c38" contact={0.9} />
       <ReefRock position={[-2.9, -0.15, -4.6]} scale={[1.9, 1.25, 1.6]} seed={3} />
       <ReefRock position={[2.8, -0.12, -4.2]} scale={[1.7, 1.1, 1.5]} seed={7} />
       <ReefRock position={[-3.9, -0.3, -7.4]} scale={[2.4, 1.5, 2.0]} seed={11} />

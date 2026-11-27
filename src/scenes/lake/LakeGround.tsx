@@ -272,12 +272,20 @@ export function LakeGround({
 
           const px = sc.x + sx * sc.height * 0.52
           const pz = sc.z + sz * sc.height * 0.52
-          const dCanopy = Math.hypot((x - px) / (sc.radius * 1.3), (z - pz) / (sc.radius * 1.3))
-          const sCanopy = (1 - THREE.MathUtils.smoothstep(dCanopy, 0.15, 1.35)) * 0.64
+          const dCanopy = Math.hypot((x - px) / (sc.radius * 1.5), (z - pz) / (sc.radius * 1.5))
+          const sCanopy = (1 - THREE.MathUtils.smoothstep(dCanopy, 0.15, 1.45)) * 0.48
 
           shadow = Math.max(shadow, sBase, sCanopy)
         }
         tmp.lerp(cShadowTint, THREE.MathUtils.clamp(shadow, 0, 0.68))
+        // terrain proximity: the turf darkens at the trunk's foot, so the tree is planted, not pasted
+        let occl = 0
+        for (let c = 0; c < casters.length; c++) {
+          const sc = casters[c]
+          const dFoot = Math.hypot((x - sc.x) / (sc.radius * 0.5), (z - sc.z) / (sc.radius * 0.5))
+          occl = Math.max(occl, Math.pow(1 - THREE.MathUtils.smoothstep(dFoot, 0.0, 1.0), 1.7))
+        }
+        tmp.multiplyScalar(1 - occl * 0.35)
       }
 
       colors[i * 3] = tmp.r

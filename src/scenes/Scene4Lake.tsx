@@ -195,8 +195,8 @@ export function Scene4Lake() {
           radius={p.height * 0.28}
           stretch={[1.45, 0.85]}
           rotation={-0.65}
-          opacity={0.36}
-          color="#32464c"
+          opacity={0.72}
+          color="#5f6b33"
         />
       ))}
 
@@ -211,8 +211,8 @@ export function Scene4Lake() {
               radius={b.scale[0] * 1.05}
               stretch={[1.35, 0.9]}
               rotation={-0.6}
-              opacity={0.32}
-              color="#32464c"
+              opacity={0.66}
+              color="#5f6b33"
             />
           </group>
         )

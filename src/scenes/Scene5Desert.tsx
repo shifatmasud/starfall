@@ -125,7 +125,7 @@ export function Scene5Desert() {
 
       {/* Classical sandstone colonnade & sanctuary dome on the left bank */}
       <Ruins position={[-5.4, oasisHeight(-5.4, -13.2) - 0.04, -13.2]} yaw={0.22} scale={1.05} sunDir={SUN5_NORM} />
-      <SoftShadow position={[-5.4, oasisHeight(-5.4, -13.2) + 0.01, -13.2]} radius={2.6} stretch={[1.5, 0.9]} rotation={0.22} opacity={0.42} color="#6b4e42" />
+      <SoftShadow position={[-5.4, oasisHeight(-5.4, -13.2) + 0.01, -13.2]} radius={2.6} stretch={[1.5, 0.9]} rotation={0.22} opacity={0.8} color="#8a6242" />
 
       {/* Generated pinnate date palms with curved ringed trunks */}
       {PALMS.map((p, i) => {
@@ -133,7 +133,7 @@ export function Scene5Desert() {
         return (
           <group key={`palm-${i}`}>
             <DatePalm position={[p.x, y - 0.04, p.z]} height={p.h} lean={p.lean} yaw={p.yaw} seed={p.seed} sunDir={SUN5_NORM} />
-            <SoftShadow position={[p.x, y + 0.01, p.z]} radius={0.65} stretch={[1.4, 0.8]} rotation={0.45} opacity={0.38} color="#6b4e42" />
+            <SoftShadow position={[p.x, y + 0.01, p.z]} radius={0.65} stretch={[1.4, 0.8]} rotation={0.45} opacity={0.76} color="#8a6242" />
           </group>
         )
       })}
@@ -144,7 +144,7 @@ export function Scene5Desert() {
         return (
           <group key={`rock-${i}`}>
             <SandstoneBoulder position={[b.x, y - 0.08, b.z]} scale={b.scale} yaw={b.yaw} seed={b.seed} sunDir={SUN5_NORM} />
-            <SoftShadow position={[b.x, y + 0.01, b.z]} radius={b.scale[0] * 1.1} stretch={[1.3, 0.9]} rotation={0.4} opacity={0.36} color="#6b4e42" />
+            <SoftShadow position={[b.x, y + 0.01, b.z]} radius={b.scale[0] * 1.1} stretch={[1.3, 0.9]} rotation={0.4} opacity={0.7} color="#8a6242" />
           </group>
         )
       })}

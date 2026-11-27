@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { applyPainterlySurface } from '../scan/Fit'
+import { SoftShadow } from '../scan/SoftShadow'
 
 function mulberry32(seed: number) {
   let a = seed >>> 0
@@ -225,7 +226,18 @@ export function ReefRock({
     applyPainterlySurface(m, { soft: 0.92, rimColor: '#9fe0f4', shadowTint: '#103446', sunDir: [-0.15, 1, -0.25] })
     return { geo: g, mat: m }
   }, [seed])
-  return <mesh geometry={geo} material={mat} position={position} scale={scale} />
+  return (
+    <group>
+      <mesh geometry={geo} material={mat} position={position} scale={scale} />
+      <SoftShadow
+        position={[position[0], position[1] + scale[1] * 0.42, position[2]]}
+        radius={scale[0] * 1.05}
+        stretch={[1.15, 1]}
+        opacity={0.78}
+        color="#123642"
+      />
+    </group>
+  )
 }
 
 /** the reef: coral heads, fans and kelp, instanced in a few clusters around the orb */
@@ -312,6 +324,12 @@ export function ReefLife() {
 
   return (
     <group>
+      {placements.coral.map(([x, y, z, s], i) => (
+        <SoftShadow key={`cs-${i}`} position={[x, y + 0.015, z]} radius={0.62 * s} stretch={[1.1, 0.95]} opacity={0.76} color="#123642" />
+      ))}
+      {placements.fans.map(([x, y, z, s], i) => (
+        <SoftShadow key={`fs-${i}`} position={[x, y + 0.015, z]} radius={0.42 * s} stretch={[1.2, 0.8]} opacity={0.68} color="#123642" />
+      ))}
       <instancedMesh ref={coralRef} args={[coralGeo, mat, placements.coral.length]} />
       <instancedMesh ref={coral2Ref} args={[coralGeo2, mat, 5]} />
       <instancedMesh ref={fanRef} args={[fanGeo, mat, placements.fans.length]} />
