@@ -103,7 +103,7 @@ export function Scene4Lake() {
       bgIntensity={0.8}
       envIntensity={1.45}
       sun={{ from: SUN4_POS, color: '#fff3dc', intensity: 2.15 }}
-      fill={{ sky: '#e2eeff', ground: '#6c8842', intensity: 1.05 }}
+      fill={{ ground: '#6c8842', intensity: 1.05 }}
       camera={{ position: [0, 1.42, 0.3], target: [-0.1, 0.5, -7.0], fov: 55 }}
       orb={{ position: [-0.55, 1.14, -5.8], radius: 0.19 }}
       look={{
@@ -127,7 +127,7 @@ export function Scene4Lake() {
       clear="#c4dcf6"
       poster={{ portrait: '/poster/scene4-portrait.webp', landscape: '/poster/scene4-landscape.webp' }}
       bloom={0.4}
-      exposure={1.16}
+      exposure={1.2}
       haze={0.1}
       shadowFloor="#2c4260"
       grade={0.3}

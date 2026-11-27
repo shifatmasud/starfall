@@ -1,7 +1,7 @@
 import { useTexture } from '@react-three/drei'
 import { GroundedSkybox } from 'three/examples/jsm/objects/GroundedSkybox.js'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Suspense, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as THREE from 'three'
 import { SceneCanvas } from '../../components/SceneCanvas'
 import { PostFX } from '../../gl/PostFX'
@@ -127,6 +127,112 @@ function ensureAtmosphericFogPatch() {
   Object.assign(THREE.UniformsLib.fog as Record<string, { value: unknown }>, ATMOS_UNIFORMS)
 }
 
+/**
+ * The palette of the one sky, measured from the one sky texture.
+ *
+ * Every scene draws the same photographed sky and lights its scans from it. The hemisphere fill used
+ * to be a hand-picked pair of colours per scene, which is why the same sunlight landed warm in the
+ * oasis and cold on the ice. Here the sky's own colours are read once, off-screen: the mean of the
+ * upper hemisphere (what the light arrives from) and of the lower (what the world bounces back), so
+ * the fill in every scene comes from the same photograph. A scene may still name its ground bounce —
+ * a dune bounces sand, a meadow bounces grass — but the sky colour is never invented again.
+ */
+export type SkyPalette = { sky: THREE.Color; ground: THREE.Color }
+
+const skyPalettes = new Map<string, SkyPalette>()
+
+function readSkyPalette(src: string): Promise<SkyPalette> {
+  const cached = skyPalettes.get(src)
+  if (cached) return Promise.resolve(cached)
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const c = document.createElement('canvas')
+      c.width = 64
+      c.height = 32
+      const ctx = c.getContext('2d')
+      if (!ctx) return reject(new Error('no 2d context'))
+      ctx.drawImage(img, 0, 0, 64, 32)
+      const d = ctx.getImageData(0, 0, 64, 32).data
+      const sky = new THREE.Color(0, 0, 0)
+      const ground = new THREE.Color(0, 0, 0)
+      let ns = 0
+      let ng = 0
+      for (let y = 0; y < 32; y++) {
+        // weight the high sky more than the horizon haze: this is the colour light arrives in
+        const w = Math.pow(1 - y / 32, 0.7)
+        for (let x = 0; x < 64; x++) {
+          const i = (y * 64 + x) * 4
+          const r = Math.pow(d[i] / 255, 2.2)
+          const g = Math.pow(d[i + 1] / 255, 2.2)
+          const b = Math.pow(d[i + 2] / 255, 2.2)
+          if (y < 15) {
+            sky.r += r * w
+            sky.g += g * w
+            sky.b += b * w
+            ns += w
+          } else if (y > 16) {
+            ground.r += r
+            ground.g += g
+            ground.b += b
+            ng += 1
+          }
+        }
+      }
+      sky.r /= Math.max(ns, 1)
+      sky.g /= Math.max(ns, 1)
+      sky.b /= Math.max(ns, 1)
+      ground.r /= Math.max(ng, 1)
+      ground.g /= Math.max(ng, 1)
+      ground.b /= Math.max(ng, 1)
+      const pal = { sky, ground }
+      skyPalettes.set(src, pal)
+      resolve(pal)
+    }
+    img.onerror = () => reject(new Error(`sky: ${src}`))
+    img.src = src
+  })
+}
+
+/** the shared sky's palette, for the scenes that draw the sky (underwater scenes pass their own) */
+function useSkyPalette(hdri?: string) {
+  const [pal, setPal] = useState<SkyPalette | null>(() => (hdri ? skyPalettes.get(hdri) ?? null : null))
+  useEffect(() => {
+    if (!hdri) return
+    let alive = true
+    readSkyPalette(hdri)
+      .then((p) => {
+        if (alive) setPal(p)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [hdri])
+  return pal
+}
+
+/** The fill: one sky colour for every scene, one ground bounce per scene, from the sky's own light. */
+function SkyFill({
+  hdri,
+  water,
+  fill,
+}: {
+  hdri?: string
+  water?: ScanSceneProps['water']
+  fill: NonNullable<ScanSceneProps['fill']>
+}) {
+  const pal = useSkyPalette(hdri)
+  const sky = useMemo(() => {
+    if (fill.sky) return new THREE.Color(fill.sky)
+    if (pal) return pal.sky.clone()
+    if (water) return new THREE.Color(water.top)
+    return new THREE.Color('#cfe2f6')
+  }, [fill.sky, pal, water])
+  return <hemisphereLight args={[sky, fill.ground, fill.intensity]} />
+}
+
 export type ScanSceneProps = {
   hdri?: string
   /** ground projection of the HDRI: camera height above the photo's floor, dome radius */
@@ -140,8 +246,8 @@ export type ScanSceneProps = {
   sun?: { from: [number, number, number]; color?: string; intensity: number }
   /** light shafts and haze from a screen point (the photo's sun), drawn over the world */
   rays?: { x: number; y: number; color: string; strength: number; haze?: number }
-  /** sky/ground fill for the scans */
-  fill?: { sky: string; ground: string; intensity: number }
+  /** sky/ground fill for the scans: the sky defaults to the shared sky's own colour */
+  fill?: { sky?: string; ground: string; intensity: number }
   bgIntensity?: number
   /** a sea instead of an HDRI: top and deep colours, fog density */
   water?: { top: string; deep: string; fog: number }
@@ -152,8 +258,8 @@ export type ScanSceneProps = {
   /** toward the tail, screen space (x right, y up); len and half-width in screen heights */
   streak?: { dir: [number, number]; len: number; width?: number; color?: string; strength?: number }
   bubbles?: { dir: [number, number]; len: number; spread: number; size: number; count?: number }
-  /** the orb's glow on the scans around it */
-  glow?: { color: string; intensity: number; distance: number }
+  /** the orb's glow on the scans around it: a real point light, its reach and its falloff */
+  glow?: { color: string; intensity: number; distance: number; decay?: number }
   /**
    * atmospheric perspective: colour and the near/far range over which it thickens, the colour the
    * haze turns toward the sun, the Mie strength and the altitude falloff
@@ -277,7 +383,7 @@ export function Orb({ orb, look, streak, bubbles, glow }: Pick<ScanSceneProps, '
 
   return (
     <>
-      {glow ? <pointLight position={orb.position} color={glow.color} intensity={glow.intensity} distance={glow.distance} decay={2} /> : null}
+      {glow ? <pointLight position={orb.position} color={glow.color} intensity={glow.intensity} distance={glow.distance} decay={glow.decay ?? 2} /> : null}
       <group ref={fx}>
         {streak ? (
           <LightStreak head={live} dir={streak.dir} len={streak.len} width={streak.width ?? 0.05} color={streak.color} strength={streak.strength} bob={0} />
@@ -292,6 +398,7 @@ export function Orb({ orb, look, streak, bubbles, glow }: Pick<ScanSceneProps, '
 /** The photographed world: the HDRI as background (ground-projected when asked) and as the IBL. */
 function World({ hdri, ground, envIntensity, bgIntensity, yaw, pitch }: { hdri: string; ground?: ScanSceneProps['ground']; envIntensity: number; bgIntensity: number; yaw: number; pitch: number }) {
   const scene = useThree((s) => s.scene)
+  const gl = useThree((s) => s.gl)
   const tex = useTexture(hdri)
   const sky = useMemo(() => {
     tex.mapping = THREE.EquirectangularReflectionMapping
@@ -309,7 +416,14 @@ function World({ hdri, ground, envIntensity, bgIntensity, yaw, pitch }: { hdri: 
     return g
   }, [tex, ground, bgIntensity, yaw])
   useEffect(() => {
-    scene.environment = tex
+    // one bake, 128px: the same sky drives the image-based light in every scene, and the hemisphere
+    // fill reads its colours off that same photograph (see SkyFill). Generated once on mount — a
+    // CPU rasterizer cannot afford to re-filter the environment per frame.
+    const pmrem = new THREE.PMREMGenerator(gl)
+    pmrem.compileEquirectangularShader()
+    const env = pmrem.fromEquirectangular(tex).texture
+    pmrem.dispose()
+    scene.environment = env
     scene.environmentIntensity = envIntensity
     scene.environmentRotation.set(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0, 'YXZ')
     scene.backgroundRotation.set(THREE.MathUtils.degToRad(pitch), THREE.MathUtils.degToRad(yaw), 0, 'YXZ')
@@ -320,8 +434,9 @@ function World({ hdri, ground, envIntensity, bgIntensity, yaw, pitch }: { hdri: 
     return () => {
       scene.environment = null
       scene.background = null
+      env.dispose()
     }
-  }, [scene, tex, sky, envIntensity, bgIntensity, yaw, pitch])
+  }, [scene, tex, sky, envIntensity, bgIntensity, yaw, pitch, gl])
   return sky ? <primitive object={sky} /> : null
 }
 
@@ -393,7 +508,7 @@ function Inner(props: ScanSceneProps) {
       {water ? <Sea {...water} /> : null}
       {sun ? <directionalLight position={sun.from} color={sun.color ?? '#fff4e0'} intensity={sun.intensity} /> : null}
       {props.rays ? <Rays {...props.rays} /> : null}
-      {fill ? <hemisphereLight args={[fill.sky, fill.ground, fill.intensity]} /> : null}
+      {fill ? <SkyFill hdri={hdri} water={water} fill={fill} /> : null}
       <Suspense fallback={null}>{children}</Suspense>
       <Orb orb={props.orb} look={props.look} streak={props.streak} bubbles={props.bubbles} glow={props.glow} />
       <FrameProbe />

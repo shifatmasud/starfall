@@ -33,10 +33,11 @@ export function ReefFloor({ radius = 26, y = 0 }: { radius?: number; y?: number 
       const ripple = Math.sin(x * 1.15 + z * 0.35) * 0.5 + Math.sin(z * 1.9 - x * 0.4) * 0.35
       const yy = y + ripple * 0.045 + Math.sin(x * 3.3) * Math.cos(z * 2.7) * 0.012
       pos.setY(i, yy)
-      const pool = 1 - THREE.MathUtils.smoothstep(r, 0.4, 3.6)
+      const pool = 1 - THREE.MathUtils.smoothstep(r, 0.4, 4.2)
       const far = THREE.MathUtils.smoothstep(r, 6, 24)
       tmp.copy(cMid).lerp(cLit, 0.25 + 0.35 * ripple)
-      tmp.lerp(cPool, pool * 0.75)
+      // a pale sand shelf under the orb — the warm pool itself is the point light, not a paint
+      tmp.lerp(cPool, pool * 0.22)
       tmp.lerp(cDeep, far * 0.9)
       col[i * 3] = tmp.r
       col[i * 3 + 1] = tmp.g
@@ -281,8 +282,11 @@ export function ReefLife() {
   const kelpRef = useRef<THREE.InstancedMesh>(null)
 
   const mat = useMemo(() => {
-    // baked colours: the reef keeps its own hue under the water attenuation
-    const m = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, fog: true })
+    // lit, not baked: the reef keeps its own hue under the water attenuation, but the orb's warm
+    // light and the surface shafts have to reach it, or the coral reads as a flat sticker. The
+    // painterly response (wrap light, coloured bounce, cyan rim) keeps it painted rather than plastic.
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.9, metalness: 0 })
+    applyPainterlySurface(m, { soft: 0.95, rimColor: '#a8e8ff', shadowTint: '#1b4a63', sunDir: [-0.15, 1, -0.25] })
     return m
   }, [])
 

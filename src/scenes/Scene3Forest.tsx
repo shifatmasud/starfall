@@ -109,7 +109,7 @@ export function Scene3Forest() {
       bgIntensity={0.55}
       skyYaw={70}
       sun={{ from: [-3, 4, -4], color: '#fff3e0', intensity: 2.6 }}
-      fill={{ sky: '#dfe6e4', ground: '#3d4538', intensity: 0.8 }}
+      fill={{ ground: '#3d4538', intensity: 0.8 }}
       camera={{ position: [0, 0.18, 0], target: [0.11, 0.06, -1.6], fov: 50 }}
       orb={{ position: [0.1, 0.16, -1.55], radius: 0.16 }}
       look={{ light: [-0.6, 0.8], tint: '#f7faf6', rim: '#c8d6d2', haloColor: '#ffe6bd', halo: 0.3, bob: 0, bend: 2.0, gain: 1.22, core: [0.1, 0.07, 0.03] }}

@@ -26,7 +26,7 @@ export function Scene6Ice() {
       bgIntensity={1.08}
       envIntensity={1.35}
       sun={{ from: [6, 3.2, -12], color: '#fff5e6', intensity: 2.35 }}
-      fill={{ sky: '#d8ecff', ground: '#4a769c', intensity: 0.85 }}
+      fill={{ ground: '#4a769c', intensity: 0.9 }}
       camera={{ position: [0, 2.35, 0], target: [0, 0.42, -6], fov: 55 }}
       orb={{ position: [0.55, 1.35, -4.2], radius: 0.19 }}
       look={{ light: [0.5, 0.75], tint: '#f2f9ff', rim: '#eef7ff', haloColor: '#d4ecff', halo: 0.5, bend: 2.0, gain: 1.45 }}

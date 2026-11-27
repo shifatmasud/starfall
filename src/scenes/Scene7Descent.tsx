@@ -19,7 +19,7 @@ export function Scene7Descent() {
     <ScanScene
       water={{ top: '#6fd4f6', deep: '#0d5c9c', fog: 0.030 }}
       sun={{ from: [-3, 10, 2], color: '#d8f6ff', intensity: 2.8 }}
-      fill={{ sky: '#a8e4ff', ground: '#0a3350', intensity: 1.25 }}
+      fill={{ ground: '#0a3350', intensity: 1.25 }}
       camera={{ position: [0, 0, 0], target: [-0.2, -0.3, -4], fov: 55 }}
       orb={{ position: [1.1, -1.1, -3.4], radius: 0.24 }}
       look={{ light: [-0.2, 1], tint: '#dff2ff', rim: '#dff4ff', haloColor: '#9fe0ff', halo: 0.42, bend: 2.2, gain: 1.25, core: [0.06, 0.14, 0.2] }}

@@ -61,7 +61,7 @@ export function Scene5Desert() {
       envIntensity={0.78}
       bgIntensity={1.12}
       sun={{ from: [-6, 4.5, -2.5], color: '#ffe0b8', intensity: 3.1 }}
-      fill={{ sky: '#d8e8fa', ground: '#b07a52', intensity: 0.4 }}
+      fill={{ ground: '#b07a52', intensity: 0.58 }}
       camera={{ position: [0, 2.35, 1.35], target: [-0.25, 0.78, -6.4], fov: 53 }}
       orb={{ position: [0.65, 1.36, -5.2], radius: 0.21 }}
       look={{ light: [-0.6, 0.7], tint: '#fff9f0', rim: '#fff5e6', haloColor: '#ffe4bc', halo: 0.34, bend: 2.0, gain: 1.1 }}
@@ -70,7 +70,7 @@ export function Scene5Desert() {
       clear="#e6cbb0"
       poster={{ portrait: '/poster/scene5-portrait.webp', landscape: '/poster/scene5-landscape.webp' }}
       bloom={0.34}
-      exposure={1.42}
+      exposure={1.52}
       haze={0.08}
       shadowFloor="#241f22"
       grade={0.45}
