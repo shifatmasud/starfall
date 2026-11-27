@@ -153,7 +153,7 @@ export function Terrain({
     const sLit = new THREE.Color(palette.snowLit ?? palette.lit), sShade = new THREE.Color(palette.snowShade ?? palette.shade)
     const air = new THREE.Color(palette.air)
     const snowLine = palette.snowLine ?? 2
-    const a = new THREE.Color(), b = new THREE.Color(), c = new THREE.Color()
+    const a = new THREE.Color(), b = new THREE.Color(), c = new THREE.Color(), tcol = new THREE.Color()
     const colors = new Float32Array(verts * 3)
     for (let k = 0; k < verts; k++) {
       N.fromBufferAttribute(nrm, k)
@@ -163,6 +163,17 @@ export function Terrain({
       b.copy(shade).lerp(sShade, snow)
       const ndl = THREE.MathUtils.smoothstep(N.dot(L) * 0.5 + 0.5, 0.4, 0.8)
       c.copy(b).lerp(a, ndl)
+      // painterly mottle: forest patches and rock ribs instead of one flat gradient
+      {
+        const wx = pos[k * 3] * 0.16, wz = pos[k * 3 + 2] * 0.16
+        const n1 = Math.sin(wx * 2.1 + Math.sin(wz * 1.7) * 2.2) * 0.5 + 0.5
+        const n2 = Math.sin(wz * 2.7 - wx * 1.9 + Math.sin(wx * 2.2)) * 0.5 + 0.5
+        const tree = n1 * 0.65 + n2 * 0.35
+        const band = THREE.MathUtils.smoothstep(hts[k], 0.02, 0.42) * (1 - THREE.MathUtils.smoothstep(hts[k], 0.45, 0.62))
+        tcol.copy(c).multiplyScalar(0.62 + 0.55 * tree)
+        c.lerp(tcol, band * 0.75)
+        c.multiplyScalar(0.94 + 0.12 * n2)
+      }
       c.lerp(air, Math.min(0.9, haze * (0.6 + 0.8 * (1 - hts[k]))))
       colors[k * 3] = c.r
       colors[k * 3 + 1] = c.g

@@ -178,6 +178,8 @@ void main(){
   // clear-sky gradient (Rayleigh-blue zenith, pale horizon): lifts a dark photographed horizon band
   vec3 clearSky = srgbToLinear(mix(vec3(0.62,0.78,1.0), vec3(0.28,0.56,0.9), pow(clamp(R.y,0.,1.), 0.5))) * uReflGain;
   refl = mix(refl, clearSky, uSkyBright) * uReflGain;
+  // painterly knee: a mirrored sun or a bright sky gap must not blow out to a white column
+  refl = refl / (1.0 + max(max(refl.r, refl.g), refl.b) * 0.85);
   vec4 clipM = uMainVP * vec4(vW, 1.0);
   vec2 suv = clipM.xy / clipM.w * 0.5 + 0.5;
   if (uUseRefl > 0.5){
@@ -185,7 +187,7 @@ void main(){
     vec4 rc = uReflVP * vec4(vW, 1.0);
     vec2 ruv = rc.xy / rc.w * 0.5 + 0.5 + N.xz * 0.06 / (1.0 + dist * 0.15);
     float inb = step(0.0, ruv.x) * step(ruv.x, 1.0) * step(0.0, ruv.y) * step(ruv.y, 1.0) * step(0.0, rc.w);
-    vec4 rr = textureLod(uRefl, clamp(ruv, 0.001, 0.999), 1.0 + clamp(dist * 0.12, 0.0, 3.0));
+    vec4 rr = textureLod(uRefl, clamp(ruv, 0.001, 0.999), 2.0 + clamp(dist * 0.12, 0.0, 3.0));
     refl = mix(refl, rr.rgb * uReflGain, clamp(rr.a * 1.25, 0.0, 1.0) * inb);
   }
   // sun glint: Blinn lobe with Cox–Munk slope variance
@@ -245,7 +247,7 @@ void main(){
     }
     glit *= F * 14.0 * uSparkle * smoothstep(0.0, 0.15, uSunDir.y);
   }
-  vec3 col = F * refl + (1.0 - F) * under + uSunCol * (glint * 4.0 + glit);
+  vec3 col = F * refl + (1.0 - F) * under + uSunCol * (glint * 1.1 + glit);
   // the body's own tint carries into the reflection, so a lagoon stays teal and an arctic sea cerulean at any angle
   col = mix(col, col * uTint, 0.45);
   float alpha = mix(1.0, smoothstep(0.0, 0.45, depth), uFeather);
